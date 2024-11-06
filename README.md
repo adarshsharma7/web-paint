@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Web Paint
 
-## Getting Started
+Web Paint is a real-time collaborative drawing application that allows users to draw together on a shared canvas and communicate via voice chat. It uses WebRTC for real-time voice communication and Socket.io for managing real-time drawing.
 
-First, run the development server:
+## Features
+- Real-time drawing on shared canvas
+- Voice chat for collaboration
+- Brush size, color selection, and undo features
+- Clear canvas option
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Installation
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Clone the repository:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+   ```bash
+   git clone https://github.com/adarshsharma7/web-paint.git
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Navigate to the project directory:
+   cd web-paint
 
-## Learn More
+3. Install dependencies:
+   npm install
 
-To learn more about Next.js, take a look at the following resources:
+4. Run the development server:
+   npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Open http://localhost:3000 in your browser.
+   
+## Technologies Used 
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js
+- Socket.io
+- WebRTC
+- Tailwind CSS
 
-## Deploy on Vercel
+# License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+    

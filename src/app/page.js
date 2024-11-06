@@ -9,9 +9,20 @@ import RoomLinkPopup from "@/components/RoomLinkPopup"
 import { useAuth } from "@/authenticationuser/useAuth";
 import axios from "axios";
 import { HiCursorClick } from "react-icons/hi";
+import { Suspense } from 'react';
 
 
 export default function Paint(request) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+        <PaintContent request={request} />
+       </Suspense>
+  
+  );
+
+}  
+
+function PaintContent(request) {
   const searchParams = useSearchParams();
   const canvasRef = useRef(null);
   const router = useRouter();
@@ -27,8 +38,6 @@ export default function Paint(request) {
   const [frndName, setFrndName] = useState("");
   const [user, setUser] = useState("");
   const [frndCursorXY, setFrndcursorXY] = useState({x:null,y:null});
-
-
 
   // 
   const [isConnected, setIsConnected] = useState(false);
@@ -269,121 +278,119 @@ export default function Paint(request) {
     ctx.beginPath(); // Reset path after clear
   });
 
-
-
-
-  return (
-    <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <div className="text-center sm:text-left">
-          <h1 className="text-4xl font-extrabold text-blue-700">Web Paint</h1>
-          <div className="flex flex-wrap items-center space-x-2 mt-4 justify-center sm:justify-start">
-            <button onClick={undo} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-blue-100 transition duration-300">
-              Undo
-            </button>
-            <button onClick={clearCanvas} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-red-100 transition duration-300">
-              Clear
-            </button>
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="p-2 rounded-full border border-gray-300 w-10 h-10"
-            />
-            <div className="flex items-center">
-              <select
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:border-blue-500 transition duration-300"
-              >
-                {[5, 10, 15, 20].map((size) => (
-                  <option key={size} value={size}>
-                    {size}px
-                  </option>
-                ))}
-              </select>
-              <span className="ml-2 font-semibold text-sm text-gray-700">Brush Size</span>
-            </div>
-          </div>
+return (
+  <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
+  <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
+    <div className="text-center sm:text-left">
+      <h1 className="text-4xl font-extrabold text-blue-700">Web Paint</h1>
+      <div className="flex flex-wrap items-center space-x-2 mt-4 justify-center sm:justify-start">
+        <button onClick={undo} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-blue-100 transition duration-300">
+          Undo
+        </button>
+        <button onClick={clearCanvas} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-red-100 transition duration-300">
+          Clear
+        </button>
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          className="p-2 rounded-full border border-gray-300 w-10 h-10"
+        />
+        <div className="flex items-center">
+          <select
+            value={brushSize}
+            onChange={(e) => setBrushSize(Number(e.target.value))}
+            className="p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:border-blue-500 transition duration-300"
+          >
+            {[5, 10, 15, 20].map((size) => (
+              <option key={size} value={size}>
+                {size}px
+              </option>
+            ))}
+          </select>
+          <span className="ml-2 font-semibold text-sm text-gray-700">Brush Size</span>
         </div>
-
-        {frndName !== "" && <h1>{`You are connected with ${frndName}`}</h1>}
-        {!invitedFrnd && (
-          user ? (
-            <div className="flex items-center mt-4 sm:mt-0">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  createRoom();
-                  setShowPopup(true); // Show popup on button click
-                }}
-                className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
-              >
-                Paint with Your Friend
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center mt-4 sm:mt-0">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  router.push("/sign-in")
-                }}
-                className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
-              >
-                Login To Draw With Friends
-              </button>
-            </div>
-          )
-        )}
-      </header>
-
-      {/* Render the RoomLinkPopup based on the state */}
-      {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
-
-      <main className="flex flex-col items-center">
-        <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
-          <canvas
-            ref={canvasRef}
-            width="1000"
-            height="600"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-          />
-          
-          {/* Friend's Cursor */}
-          {frndCursorXY.x !== null && frndCursorXY.y !== null && (
-            <div
-              className="absolute"
-              style={{
-                left: `${frndCursorXY.x}px`,
-                top: `${frndCursorXY.y}px`,
-              }}
-            >
-              <HiCursorClick
-                className="text-blue-500" // Change the color here
-                style={{
-                  transform: "translate(-50%, -50%)", // Center the icon on the cursor point
-                  fontSize: "24px", // Adjust the size of the cursor icon
-                }}
-              />
-            </div>
-          )}
-        </div>
-        <div className="flex mt-6 space-x-2">
-          {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
-            <button
-              key={clr}
-              onClick={() => setColor(clr)}
-              className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
-              style={{ backgroundColor: clr }}
-            ></button>
-          ))}
-        </div>
-      </main>
+      </div>
     </div>
-  );
 
-}  
+    {frndName !== "" && <h1>{`You are connected with ${frndName}`}</h1>}
+    {!invitedFrnd && (
+      user ? (
+        <div className="flex items-center mt-4 sm:mt-0">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              createRoom();
+              setShowPopup(true); // Show popup on button click
+            }}
+            className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
+          >
+            Paint with Your Friend
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center mt-4 sm:mt-0">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              router.push("/sign-in")
+            }}
+            className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
+          >
+            Login To Draw With Friends
+          </button>
+        </div>
+      )
+    )}
+  </header>
+
+  {/* Render the RoomLinkPopup based on the state */}
+  {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
+
+  <main className="flex flex-col items-center">
+    <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+      <canvas
+        ref={canvasRef}
+        width="1000"
+        height="600"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+      />
+      
+      {/* Friend's Cursor */}
+      {frndCursorXY.x !== null && frndCursorXY.y !== null && (
+        <div
+          className="absolute"
+          style={{
+            left: `${frndCursorXY.x}px`,
+            top: `${frndCursorXY.y}px`,
+          }}
+        >
+          <HiCursorClick
+            className="text-blue-500" // Change the color here
+            style={{
+              transform: "translate(-50%, -50%)", // Center the icon on the cursor point
+              fontSize: "24px", // Adjust the size of the cursor icon
+            }}
+          />
+        </div>
+      )}
+    </div>
+    <div className="flex mt-6 space-x-2">
+      {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
+        <button
+          key={clr}
+          onClick={() => setColor(clr)}
+          className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
+          style={{ backgroundColor: clr }}
+        ></button>
+      ))}
+    </div>
+  </main>
+</div>
+)
+
+
+}
