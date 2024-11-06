@@ -4,7 +4,7 @@ import User from '@/models/userModel';
 import jwt from 'jsonwebtoken';
 
 export async function GET(req) {
-    const cookies = req.cookies;  // This will give you the cookies from the request
+    const cookies = req.cookies;  
 
 
   if (!cookies) {
@@ -15,7 +15,12 @@ export async function GET(req) {
   }
 
   const token = cookies.get('token')?.value;
-
+ if(!token){
+  return NextResponse.json({
+    success: false,
+    message: "No token provided"
+  }, { status: 401 });
+ }
 
   try {
     await dbConnect();
