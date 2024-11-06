@@ -400,7 +400,7 @@ function PaintContent(request) {
                 onClick={() => setShowUserPopup(!showUserPopup)}
               />
               {showUserPopup && (
-                <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
+                <div ref={profileOptions} className="z-50 absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
                   <button
                     onClick={handleLogout}
                     className="text-gray-800 p-2 hover:bg-gray-100 rounded-lg"
