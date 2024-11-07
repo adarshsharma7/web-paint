@@ -50,12 +50,15 @@ function PaintContent(request) {
   const [checkingUser, setCheckingUser] = useState(true);
   const [isTwoCanvas, setIsTwoCanvas] = useState(false);
 
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+
   // 
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
 
 
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowWidth, setWindowWidth] = useState(null);
 
   //  const { data: session } = useSession();
   //  const user = session?.user;
@@ -162,6 +165,19 @@ function PaintContent(request) {
 
     socket.on("isTwoCanvas", (data) => {
       setIsTwoCanvas(data)
+
+      setNotificationMessage(`${frndName} has ${data ? "split" : "merged"} the screen`);
+      setShowNotification(true);
+
+
+      // Automatically hide notification after 3 seconds
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 4000);
+      return () => {
+        socket.off("isTwoCanvas");
+      };
+
     })
 
 
@@ -231,6 +247,9 @@ function PaintContent(request) {
 
   useEffect(() => {
     // Update window width on resize
+    if (typeof window !== "undefined") {
+      setWindowWidth(window.innerWidth);
+    }
     const handleResize = () => setWindowWidth(window.innerWidth);
     const handleTouchMove = (e) => {
       e.preventDefault(); // Prevent default behavior (scrolling, zooming)
@@ -551,7 +570,7 @@ function PaintContent(request) {
 
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
-      <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth<1092 && "flex-wrap"}`}>
+      <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
         <div className="flex flex-col items-center w-full">
 
           {/* Left (Original) Canvas */}
@@ -597,7 +616,7 @@ function PaintContent(request) {
         </div>
 
         {/* Toggle Button */}
-        {frndName == "" && (
+        {frndName !== "" && (
           <div
             className=" relative group mx-4 cursor-pointer"
             onClick={() => setIsTwoCanvas(!isTwoCanvas)}
@@ -649,7 +668,17 @@ function PaintContent(request) {
       </main>
 
 
-
+      {/* Notification */}
+      {showNotification && (
+        <div
+          className={`fixed ${showNotification ? "translate-y-0" : "-translate-y-full"} 
+          transition-transform duration-500 ease-out bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg
+          ${isTwoCanvas ? "top-4" : "bottom-4"} left-1/2 transform -translate-x-1/2`}
+          style={{ zIndex: 1000 }}
+        >
+          {notificationMessage}
+        </div>
+      )}
 
     </div>
   );
