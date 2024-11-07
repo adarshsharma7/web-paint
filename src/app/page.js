@@ -55,6 +55,8 @@ function PaintContent(request) {
   const [transport, setTransport] = useState("N/A");
 
 
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
   //  const { data: session } = useSession();
   //  const user = session?.user;
   useEffect(() => {
@@ -162,10 +164,6 @@ function PaintContent(request) {
       setIsTwoCanvas(data)
     })
 
-    document.addEventListener('click', handleClickOutside, true);
-    return () => {
-      document.removeEventListener('click', handleClickOutside, true);
-    };
 
   }, [roomId, user, isTwoCanvas])
 
@@ -231,19 +229,35 @@ function PaintContent(request) {
   }, []);
 
 
-
   useEffect(() => {
-    console.log("history2 update hui ", history2);
+    // Update window width on resize
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleTouchMove = (e) => {
+      e.preventDefault(); // Prevent default behavior (scrolling, zooming)
+    };
 
-  }, [history2])
+    const handleClickOutside = (event) => {
+      if (profileOptions.current && !profileOptions.current.contains(event.target)) {
+        setShowUserPopup(false)
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    document.addEventListener('click', handleClickOutside, true);
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
 
 
-
-  const handleClickOutside = (event) => {
-    if (profileOptions.current && !profileOptions.current.contains(event.target)) {
-      setShowUserPopup(false)
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener('click', handleClickOutside, true);
     }
-  };
+  }, []);
+
+
+
+
 
   function saveToHistory(isFrnd) {
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
@@ -390,6 +404,54 @@ function PaintContent(request) {
     }
   };
 
+
+
+
+
+
+  // Touch Event Handlers for Mobile
+  const startDrawingTouch = (e) => {
+    e.preventDefault(); // Prevent default touch behavior (scrolling, zooming)
+
+    if (e.touches && e.touches.length > 0) {
+      saveToHistory()
+      const canvasRect = e.target.getBoundingClientRect();
+      const x = e.touches[0].clientX - canvasRect.left;
+      const y = e.touches[0].clientY - canvasRect.top;
+      setIsDrawing(true);
+      drawOnCanvas(x, y, color, brushSize, false, false);
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+    }
+  };
+
+  const drawTouch = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      const canvasRect = e.target.getBoundingClientRect();
+      const x = e.touches[0].clientX - canvasRect.left;
+      const y = e.touches[0].clientY - canvasRect.top;
+      socket.emit("frndCursor", { roomId, x, y });
+      if (!isDrawing) return;
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+      drawOnCanvas(x, y, color, brushSize, true, false);
+    }
+  };
+
+  const stopDrawingTouch = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      const canvasRect = e.target.getBoundingClientRect();
+      const x = e.touches[0].clientX - canvasRect.left;
+      const y = e.touches[0].clientY - canvasRect.top;
+      setIsDrawing(false);
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+      const ctx = canvasRef.current.getContext("2d");
+      ctx.beginPath(); // Reset path after drawing
+    }
+  };
+
+
+
+
+
   return (
     <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
@@ -489,25 +551,81 @@ function PaintContent(request) {
 
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
-      <main className={`flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"}`}>
-        <div className="flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            {/* Left (Original) Canvas */}
+      <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth<1092 && "flex-wrap"}`}>
+        <div className="flex flex-col items-center w-full">
+
+          {/* Left (Original) Canvas */}
+          <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+            <canvas
+              ref={canvasRef}
+              width={windowWidth > 768 && isTwoCanvas ? 500 : windowWidth} // Adjust width dynamically based on screen size
+              height="515"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawingTouch}
+              onTouchMove={drawTouch}
+              onTouchEnd={stopDrawingTouch}
+            />
+            {/* Friend's Cursor */}
+            {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
+              <div
+                className="absolute"
+                style={{
+                  left: `${frndCursorXY.x}px`,
+                  top: `${frndCursorXY.y}px`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <HiCursorClick className="text-blue-500 text-2xl" />
+              </div>
+            )}
+          </div>
+
+          {/* Color Selection Row */}
+          <div className="flex mt-6 space-x-2 flex-wrap justify-center">
+            {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
+              <button
+                key={clr}
+                onClick={() => setColor(clr)}
+                className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
+                style={{ backgroundColor: clr }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Toggle Button */}
+        {frndName == "" && (
+          <div
+            className=" relative group mx-4 cursor-pointer"
+            onClick={() => setIsTwoCanvas(!isTwoCanvas)}
+          >
+            <GoArrowSwitch />
+            {/* Tooltip */}
+            <div
+              className="z-50 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2
+          opacity-0 group-hover:opacity-100 transition-opacity duration-200
+          bg-gray-700 text-white text-xs px-3 py-1 rounded shadow-lg
+          group-hover:block hidden"
+            >
+              {isTwoCanvas ? "Merge Canvas" : "Split Canvas"}
+            </div>
+          </div>
+        )}
+
+        {/* Right Canvas */}
+        {isTwoCanvas && (
+          <div className="flex flex-col items-center w-full">
             <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
               <canvas
-                ref={canvasRef}
-                width={isTwoCanvas ? 720 : 4000} // Dynamic width
+                ref={canvasRef2}
+                width={windowWidth > 768 ? 500 : windowWidth}
                 height="515"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
               />
-              {/* Friend's Cursor */}
-              {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
+              {/* Friend's Cursor on Right Canvas */}
+              {frndCursorXY.x !== null && frndCursorXY.y !== null && (
                 <div
                   className="absolute"
                   style={{
@@ -521,73 +639,15 @@ function PaintContent(request) {
               )}
             </div>
 
-            {/* Color Selection Row */}
-            <div className="flex mt-6 space-x-2 flex-wrap justify-center">
-              {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
-                <button
-                  key={clr}
-                  onClick={() => setColor(clr)}
-                  className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
-                  style={{ backgroundColor: clr }}
-                />
-              ))}
+            {/* Friend's Name */}
+            <div className="flex mt-[37.5px] space-x-2 flex-wrap justify-center">
+              <h1 className="text-center">{frndName}</h1>
+              <h3 className="text-center font-serif text-blue-800">canvas</h3>
             </div>
           </div>
-
-          {/* Toggle Button */}
-          {frndName !== "" && (
-            <div
-              className="relative group mx-4 cursor-pointer"
-              onClick={() => setIsTwoCanvas(!isTwoCanvas)}
-            >
-              <GoArrowSwitch />
-              {/* Tooltip */}
-              <div
-                className="z-50 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2
-                opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                bg-gray-700 text-white text-xs px-3 py-1 rounded shadow-lg
-                group-hover:block hidden"
-              >
-                {isTwoCanvas ? "Merge Canvas" : "Split Canvas"}
-              </div>
-            </div>
-          )}
-
-
-
-          {/* Right Canvas */}
-          {isTwoCanvas && (
-            <div className="flex flex-col items-center ">
-              <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
-                <canvas
-                  ref={canvasRef2}
-                  width="720"
-                  height="515"
-                />
-                {/* Friend's Cursor on Right Canvas */}
-                {frndCursorXY.x !== null && frndCursorXY.y !== null && (
-                  <div
-                    className="absolute"
-                    style={{
-                      left: `${frndCursorXY.x}px`,
-                      top: `${frndCursorXY.y}px`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    <HiCursorClick className="text-blue-500 text-2xl" />
-                  </div>
-                )}
-              </div>
-
-              {/* Friend's Name */}
-              <div className="flex mt-[37.5px] space-x-2 flex-wrap justify-center">
-                <h1 className="text-center">{frndName}</h1>
-                <h3 className="text-center font-serif text-blue-800">canvas</h3>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </main>
+
 
 
 
