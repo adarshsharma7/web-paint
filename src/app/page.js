@@ -11,6 +11,7 @@ import axios from "axios";
 import { HiCursorClick } from "react-icons/hi";
 import { Suspense } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { GoArrowSwitch } from "react-icons/go";
 
 
 export default function Paint(request) {
@@ -26,6 +27,7 @@ export default function Paint(request) {
 function PaintContent(request) {
   const searchParams = useSearchParams();
   const canvasRef = useRef(null);
+  const canvasRef2 = useRef(null);
   const profileOptions = useRef(null);
   const { toast } = useToast();
   const router = useRouter();
@@ -35,6 +37,7 @@ function PaintContent(request) {
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(5);
   const [history, setHistory] = useState([]); // Array to store canvas history for undo
+  const [history2, setHistory2] = useState([]); // Array to store canvas history for undo
   const [redoHistory, setRedoHistory] = useState([]); // Optional: Redo functionality
   const [roomId, setRoomId] = useState("");
   const [invitedFrnd, setInvitedFrnd] = useState(false);
@@ -45,11 +48,12 @@ function PaintContent(request) {
   const [frndCursorXY, setFrndcursorXY] = useState({ x: null, y: null });
   const [showUserPopup, setShowUserPopup] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
+  const [isTwoCanvas, setIsTwoCanvas] = useState(false);
 
   // 
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
-  
+
 
   //  const { data: session } = useSession();
   //  const user = session?.user;
@@ -74,7 +78,7 @@ function PaintContent(request) {
         } else {
           console.log("Unexpected error occurred.");
         }
-      }finally{
+      } finally {
         setCheckingUser(false)
       }
 
@@ -121,8 +125,13 @@ function PaintContent(request) {
       setInvitedFrnd(true)
       socket.emit("joinRoom", idFromUrl);
     }
-    socket.on("draw", ({ color, brushSize, x, y, isDrawing }) => {
-      drawOnCanvas(x, y, color, brushSize, isDrawing);
+    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory }) => {
+
+      if (canvasRef2.current && saveHistory) {
+
+        saveToHistory(true)
+      }
+      drawOnCanvas(x, y, color, brushSize, isDrawing, true);
     });
 
 
@@ -133,7 +142,8 @@ function PaintContent(request) {
     return () => {
       socket.disconnect();
     };
-  }, [searchParams])
+  }, [])
+
 
   useEffect(() => {
     socket.emit("userName", { roomId, name: user?.fullName })
@@ -145,13 +155,88 @@ function PaintContent(request) {
       const { x, y } = data;
       setFrndcursorXY({ x, y })
     })
-    
+
+    socket.emit("setIsTwoCanvas", { roomId, isTwoCanvas })
+
+    socket.on("isTwoCanvas", (data) => {
+      setIsTwoCanvas(data)
+    })
+
     document.addEventListener('click', handleClickOutside, true);
     return () => {
       document.removeEventListener('click', handleClickOutside, true);
     };
 
-  }, [roomId, user])
+  }, [roomId, user, isTwoCanvas])
+
+  useEffect(() => {
+    // Listen for undo event from other clients
+    socket.on("undo", () => {
+      const canvas = (canvasRef2.current) ? canvasRef2.current : canvasRef.current;
+      const ctx = canvas.getContext("2d");
+
+      if (canvasRef2.current) {
+        setHistory2((prevHistory) => {
+          const newHistory = prevHistory.slice(0, -1); // Latest history update
+          const lastImage = newHistory[newHistory.length - 1]; // Get last image from updated history
+
+          if (lastImage) {
+            console.log("hiii mister");
+            const img = new Image();
+            img.src = lastImage;
+            img.onload = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0);
+              ctx.beginPath(); // Reset path to prevent reappearing drawings
+            };
+          } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+          }
+
+          return newHistory; // Return updated history
+        });
+      } else {
+        setHistory((prevHistory) => {
+          const newHistory = prevHistory.slice(0, -1); // Latest history update
+          const lastImage = newHistory[newHistory.length - 1]; // Get last image from updated history
+
+          if (lastImage) {
+            console.log("hiii mister");
+            const img = new Image();
+            img.src = lastImage;
+            img.onload = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0);
+              ctx.beginPath();
+            };
+          } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+          }
+
+          return newHistory; // Return updated history
+        });
+      }
+    });
+
+
+    // Listen for clear event from other clients
+    socket.on("clear", () => {
+      const canvas = canvasRef2.current ? canvasRef2.current : canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath(); // Reset path after clear
+    });
+  }, []);
+
+
+
+  useEffect(() => {
+    console.log("history2 update hui ", history2);
+
+  }, [history2])
+
 
 
   const handleClickOutside = (event) => {
@@ -160,12 +245,20 @@ function PaintContent(request) {
     }
   };
 
-  const saveToHistory = () => {
-    const canvas = canvasRef.current;
+  function saveToHistory(isFrnd) {
+    const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
+
     if (canvas) {
       // Save the current canvas image data
       const imageData = canvas.toDataURL();
-      setHistory((prevHistory) => [...prevHistory, imageData]);
+      if (canvasRef2.current && isFrnd) {
+
+        setHistory2((prevHistory) => [...prevHistory, imageData]);
+      } else {
+
+        setHistory((prevHistory) => [...prevHistory, imageData]);
+      }
+
       setRedoHistory([]); // Clear redo history when a new action is taken
     }
   };
@@ -179,8 +272,10 @@ function PaintContent(request) {
     setFrndName("")
   }
 
-  const drawOnCanvas = (x, y, color, brushSize, isDrawing) => {
-    const canvas = canvasRef.current;
+  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd) => {
+
+    const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
+
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = color;
@@ -206,7 +301,7 @@ function PaintContent(request) {
     socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
 
     // Draw on the local canvas
-    drawOnCanvas(x, y, color, brushSize, true);
+    drawOnCanvas(x, y, color, brushSize, true, false);
   };
 
   const startDrawing = (e) => {
@@ -216,10 +311,10 @@ function PaintContent(request) {
     setIsDrawing(true);
 
     // Start a new path and draw on the local canvas
-    drawOnCanvas(x, y, color, brushSize, false);
+    drawOnCanvas(x, y, color, brushSize, false, false);
 
     // Emit the initial point with isDrawing set to true
-    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
   };
 
 
@@ -233,6 +328,7 @@ function PaintContent(request) {
 
 
   const undo = () => {
+
     if (history.length === 0) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -257,62 +353,37 @@ function PaintContent(request) {
     }
 
     // Emit undo event to other clients
-    socket.emit("undo", roomId);
+    socket.emit("Undo", roomId);
+
+
   };
-
-  // Listen for undo event from other clients
-  socket.on("undo", () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const lastImage = history[history.length - 2]; // Get the second-to-last image
-    if (lastImage) {
-      const img = new Image();
-      img.src = lastImage;
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        ctx.beginPath(); // Reset path to prevent reappearing drawings
-      };
-    } else {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.beginPath(); // Reset path after clear
-    }
-  });
 
 
   const clearCanvas = () => {
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     saveToHistory(); // Save the cleared canvas to history
     ctx.beginPath(); // Reset path to prevent reappearing drawings
 
-    // Emit clear event to other clients
-    socket.emit("clear", roomId);
-  };
 
-  // Listen for clear event from other clients
-  socket.on("clear", () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.beginPath(); // Reset path after clear
-  });
+    socket.emit("Clear", roomId);
 
+  }
 
   const handleLogout = async () => {
     try {
       // Call the logout API route to clear the cookies on the server
       const response = await axios.get('/api/users/logout');
-  
+
       // Optionally, handle additional logout-related actions here, such as redirecting the user
       if (response.status === 200) {
         toast({
           title: 'Logged Out',
           description: 'Cockies Cleared Successfully',
         });
-       setUser("")
+        setUser("")
       }
     } catch (error) {
       console.error('Logout failed:', error);
@@ -383,7 +454,7 @@ function PaintContent(request) {
                   }}
                   className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
                 >
-                 {checkingUser ? "checking..." : "Login To Draw With Friends"}
+                  {checkingUser ? "checking..." : "Login To Draw With Friends"}
                 </button>
               </div>
             )
@@ -418,54 +489,108 @@ function PaintContent(request) {
 
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
-      <main className="flex flex-col items-center">
-        <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
-          <canvas
-            ref={canvasRef}
-            width="1000"
-            height="515"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-          />
-
-          {/* Friend's Cursor */}
-          {frndCursorXY.x !== null && frndCursorXY.y !== null && (
-            <div
-              className="absolute"
-              style={{
-                left: `${frndCursorXY.x}px`,
-                top: `${frndCursorXY.y}px`,
-              }}
-            >
-              <HiCursorClick
-                className="text-blue-500"
-                style={{
-                  transform: "translate(-50%, -50%)",
-                  fontSize: "24px",
-                }}
+      <main className={`flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"}`}>
+        <div className="flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            {/* Left (Original) Canvas */}
+            <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+              <canvas
+                ref={canvasRef}
+                width={isTwoCanvas ? 720 : 4000} // Dynamic width
+                height="515"
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
               />
+              {/* Friend's Cursor */}
+              {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
+                <div
+                  className="absolute"
+                  style={{
+                    left: `${frndCursorXY.x}px`,
+                    top: `${frndCursorXY.y}px`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <HiCursorClick className="text-blue-500 text-2xl" />
+                </div>
+              )}
+            </div>
+
+            {/* Color Selection Row */}
+            <div className="flex mt-6 space-x-2 flex-wrap justify-center">
+              {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
+                <button
+                  key={clr}
+                  onClick={() => setColor(clr)}
+                  className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
+                  style={{ backgroundColor: clr }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Toggle Button */}
+          {frndName !== "" && (
+            <div
+              className="relative group mx-4 cursor-pointer"
+              onClick={() => setIsTwoCanvas(!isTwoCanvas)}
+            >
+              <GoArrowSwitch />
+              {/* Tooltip */}
+              <div
+                className="z-50 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2
+                opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                bg-gray-700 text-white text-xs px-3 py-1 rounded shadow-lg
+                group-hover:block hidden"
+              >
+                {isTwoCanvas ? "Merge Canvas" : "Split Canvas"}
+              </div>
+            </div>
+          )}
+
+
+
+          {/* Right Canvas */}
+          {isTwoCanvas && (
+            <div className="flex flex-col items-center ">
+              <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+                <canvas
+                  ref={canvasRef2}
+                  width="720"
+                  height="515"
+                />
+                {/* Friend's Cursor on Right Canvas */}
+                {frndCursorXY.x !== null && frndCursorXY.y !== null && (
+                  <div
+                    className="absolute"
+                    style={{
+                      left: `${frndCursorXY.x}px`,
+                      top: `${frndCursorXY.y}px`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
+                    <HiCursorClick className="text-blue-500 text-2xl" />
+                  </div>
+                )}
+              </div>
+
+              {/* Friend's Name */}
+              <div className="flex mt-[37.5px] space-x-2 flex-wrap justify-center">
+                <h1 className="text-center">{frndName}</h1>
+                <h3 className="text-center font-serif text-blue-800">canvas</h3>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Color Selection Row - No Scroll */}
-        <div className="flex mt-6 space-x-2 flex-wrap justify-center">
-          {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
-            <button
-              key={clr}
-              onClick={() => setColor(clr)}
-              className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
-              style={{ backgroundColor: clr }}
-            ></button>
-          ))}
-        </div>
       </main>
+
+
+
     </div>
   );
 

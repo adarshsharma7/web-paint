@@ -18,38 +18,52 @@ app.prepare().then(() => {
     console.log("New client connected:", socket.id);
 
     socket.on("joinRoom", (roomId) => {
-        socket.join(roomId);
-        socket.to(roomId).emit("newUserJoined");
-        console.log(`Client ${socket.id} joined room ${roomId}`);
+      socket.join(roomId);
+      socket.to(roomId).emit("newUserJoined");
+      console.log(`Client ${socket.id} joined room ${roomId}`);
     });
 
     socket.on("drawing", (data) => {
-        const { roomId, color, brushSize, x, y, isDrawing } = data;
+      const { roomId, color, brushSize, x, y, isDrawing,saveHistory } = data;
+   
+      if(saveHistory){
+      
+        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, saveHistory});
+      }else{
         socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing });
+      }
+    
     });
 
     socket.on("userName", (data) => {
-      const { roomId,name } = data;
-        socket.to(roomId).emit("frndName", name);
+      const { roomId, name } = data;
+      socket.to(roomId).emit("frndName", name);
     });
     socket.on("frndCursor", (data) => {
-      const { roomId,x,y } = data;
-      socket.to(roomId).emit("frndCursorXY", {x,y});
+      const { roomId, x, y } = data;
+      socket.to(roomId).emit("frndCursorXY", { x, y });
     });
 
-    socket.on("undo", (data) => {
-      const { roomId, lastImage } = data;
-      socket.to(roomId).emit("undo", lastImage);
-  });
-  
-     socket.on("clear", (roomId) => {
-         socket.to(roomId).emit("clear");
-     });
+    socket.on("setIsTwoCanvas", (data) => {
+    
+      const { roomId, isTwoCanvas } = data;
+      socket.to(roomId).emit("isTwoCanvas", isTwoCanvas);
+    });
+   
+    socket.on("Undo", (roomId) => {
+    
+      socket.to(roomId).emit("undo");
+    });
+
+    socket.on("Clear", (roomId) => {
+     
+      socket.to(roomId).emit("clear");
+    });
 
     socket.on("disconnect", () => {
-        console.log("Client disconnected:", socket.id);
+      console.log("Client disconnected:", socket.id);
     });
-});
+  });
 
   httpServer
     .once("error", (err) => {
