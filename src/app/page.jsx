@@ -29,6 +29,9 @@ function PaintContent(request) {
   const canvasRef = useRef(null);
   const canvasRef2 = useRef(null);
   const profileOptions = useRef(null);
+  const touchCanvasRef = useRef(null);
+
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -183,6 +186,7 @@ function PaintContent(request) {
 
   }, [roomId, user, isTwoCanvas])
 
+
   useEffect(() => {
     // Listen for undo event from other clients
     socket.on("undo", () => {
@@ -252,7 +256,10 @@ function PaintContent(request) {
     }
     const handleResize = () => setWindowWidth(window.innerWidth);
     const handleTouchMove = (e) => {
-      e.preventDefault(); // Prevent default behavior (scrolling, zooming)
+      if(touchCanvasRef.current && touchCanvasRef.current.contains(event.target)){
+        e.preventDefault(); // Prevent default behavior (scrolling, zooming)
+      }
+     
     };
 
     const handleClickOutside = (event) => {
@@ -571,7 +578,7 @@ function PaintContent(request) {
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
       <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
-        <div className="flex flex-col items-center w-full">
+        <div ref={touchCanvasRef} className="flex flex-col items-center w-full">
 
           {/* Left (Original) Canvas */}
           <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">

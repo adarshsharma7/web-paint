@@ -52,12 +52,14 @@ export default function SignInForm() {
   
       if (response.data.success === false) {
         // Handle the verification case
-        if (response.data.message === "Please verify your account before login") {
-          router.replace(`/verify/${response.data.username}`);
+        if (response.data.username) {
           toast({
             title: 'Code Sent',
             description: 'Check your email for the verification code.',
           });
+          
+          router.replace(`/verify/${response.data.username}`);
+          
         } else {
           // Handle other error messages
           toast({
