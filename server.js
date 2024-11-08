@@ -24,21 +24,27 @@ app.prepare().then(() => {
     });
 
     socket.on("drawing", (data) => {
-      const { roomId, color, brushSize, x, y, isDrawing,saveHistory } = data;
+      const { roomId, color, brushSize, x, y, isDrawing,saveHistory,frndDrawingMode } = data;
    
       if(saveHistory){
-      
-        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, saveHistory});
+        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, saveHistory,frndDrawingMode});
       }else{
-        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing });
+        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing,frndDrawingMode });
       }
     
+    });
+
+    socket.on("drawshape", (data) => {
+      const { roomId,startX, startY, x, y, drawingMode,color,brushSize } = data;
+   
+        socket.to(roomId).emit("drawShape", { startX, startY, x, y, drawingMode,color,brushSize });
     });
 
     socket.on("userName", (data) => {
       const { roomId, name } = data;
       socket.to(roomId).emit("frndName", name);
     });
+
     socket.on("frndCursor", (data) => {
       const { roomId, x, y } = data;
       socket.to(roomId).emit("frndCursorXY", { x, y });

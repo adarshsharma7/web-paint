@@ -12,6 +12,8 @@ import { HiCursorClick } from "react-icons/hi";
 import { Suspense } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { GoArrowSwitch } from "react-icons/go";
+import { drawShape } from "@/components/drawshape";
+import Toolbar from "@/components/toolbar";
 
 
 export default function Paint(request) {
@@ -60,6 +62,9 @@ function PaintContent(request) {
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
 
+  const [drawingMode, setDrawingMode] = useState("freehand");
+  const [startX, setStartX] = useState(0); // Starting X for shape
+  const [startY, setStartY] = useState(0); // Starting Y for shap
 
   const [windowWidth, setWindowWidth] = useState(null);
 
@@ -133,16 +138,26 @@ function PaintContent(request) {
       setInvitedFrnd(true)
       socket.emit("joinRoom", idFromUrl);
     }
-    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory }) => {
+    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory,frndDrawingMode }) => {
 
       if (canvasRef2.current && saveHistory) {
 
         saveToHistory(true)
       }
-      drawOnCanvas(x, y, color, brushSize, isDrawing, true);
-    });
+      drawOnCanvas(x, y, color, brushSize, isDrawing, true,frndDrawingMode);
+    });  
 
-
+    socket.on("drawShape",({startX, startY, x, y, drawingMode,color,brushSize })=>{
+      let ctx;
+      if(canvasRef2.current){
+         ctx = canvasRef2.current.getContext("2d");
+      }else{
+         ctx = canvasRef.current.getContext("2d");
+      }
+    
+      drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
+    })
+   
     socket.on("frndName", (data) => {
       setFrndName(data);
     })
@@ -256,10 +271,10 @@ function PaintContent(request) {
     }
     const handleResize = () => setWindowWidth(window.innerWidth);
     const handleTouchMove = (e) => {
-      if(touchCanvasRef.current && touchCanvasRef.current.contains(event.target)){
+      if (touchCanvasRef.current && touchCanvasRef.current.contains(event.target)) {
         e.preventDefault(); // Prevent default behavior (scrolling, zooming)
       }
-     
+
     };
 
     const handleClickOutside = (event) => {
@@ -312,58 +327,118 @@ function PaintContent(request) {
     setFrndName("")
   }
 
-  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd) => {
-
+  // Drawing function with modes
+  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
-
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = color;
     ctx.lineWidth = brushSize;
     ctx.lineCap = "round";
 
-    if (isDrawing) {
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    } else {
-      ctx.beginPath(); // Start a new path to prevent joining with previous strokes
-      ctx.moveTo(x, y);
+    // Ensure we start a new path each time for freehand drawing
+    if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
+      if (isDrawing) {
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }
+    } else if (drawingMode === "circle" || drawingMode === "rectangle" || drawingMode === "line" || drawingMode === "arrow") {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before drawing the shape preview
+        restoreFromHistory(ctx); // Restore previous drawings
+        ctx.beginPath(); // Start a new path for each shape to avoid extra lines
+        drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
     }
-  };
+};
 
+
+  // Freehand or shape drawing function
   const draw = (e) => {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     socket.emit("frndCursor", { roomId, x, y });
+
     if (!isDrawing) return;
 
-    // Emit the new point with isDrawing set to true
-    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
-
-    // Draw on the local canvas
-    drawOnCanvas(x, y, color, brushSize, true, false);
+    if (drawingMode === "freehand") {
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+      drawOnCanvas(x, y, color, brushSize, true, false);
+    } 
   };
+
+
+  // const draw = (e) => {
+  //   const x = e.nativeEvent.offsetX;
+  //   const y = e.nativeEvent.offsetY;
+  //   socket.emit("frndCursor", { roomId, x, y });
+  //   if (!isDrawing) return;
+
+  //   // Emit the new point with isDrawing set to true
+  //   socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+
+  //   // Draw on the local canvas
+  //   drawOnCanvas(x, y, color, brushSize, true, false);
+  // };
+
+
+  // Starting a new drawing, initializing shape coordinates
+
 
   const startDrawing = (e) => {
-    saveToHistory(); // Save the current canvas state before starting a new drawing
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath()
+    saveToHistory(); // Save the current canvas state before new drawing
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
+    setStartX(x); // Set start coordinates for shapes
+    setStartY(y);
     setIsDrawing(true);
 
-    // Start a new path and draw on the local canvas
-    drawOnCanvas(x, y, color, brushSize, false, false);
-
-    // Emit the initial point with isDrawing set to true
-    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
+    if (drawingMode === "freehand") {
+      drawOnCanvas(x, y, color, brushSize, false, false);
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
+    }
   };
+
+
+  // Stopping the drawing and finalizing shapes
 
 
   const stopDrawing = (e) => {
+    if (!isDrawing) return;
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
     setIsDrawing(false);
-    socket.emit("drawing", { roomId, color, brushSize, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, isDrawing: false });
+
     const ctx = canvasRef.current.getContext("2d");
-    ctx.beginPath(); // Reset path after drawing
-  };
+
+    if (drawingMode === "freehand") {
+        socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+       
+    } else {
+        socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode,color,brushSize });
+        drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
+      
+    }
+    ctx.beginPath();
+};
+
+
+  // Restore canvas from history for previewing shapes without permanent drawing
+  const restoreFromHistory = (ctx) => {
+    if (history.length === 0) return;
+
+    const img = new Image();
+    img.src = history[history.length - 1];
+    img.onload = () => {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas before restoring
+        ctx.drawImage(img, 0, 0);
+    };
+};
 
 
 
@@ -481,38 +556,17 @@ function PaintContent(request) {
   return (
     <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <div className="text-center sm:text-left">
-          <h1 className="text-4xl font-extrabold text-blue-700">Web Paint</h1>
-          <div className="flex flex-wrap items-center space-x-2 mt-4 justify-center sm:justify-start">
-            <button onClick={undo} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-blue-100 transition duration-300">
-              Undo
-            </button>
-            <button onClick={clearCanvas} className="p-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-red-100 transition duration-300">
-              Clear
-            </button>
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="p-2 rounded-full border border-gray-300 w-10 h-10"
-            />
-            <div className="flex items-center">
-              <select
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:border-blue-500 transition duration-300"
-              >
-                {[5, 10, 15, 20].map((size) => (
-                  <option key={size} value={size}>
-                    {size}px
-                  </option>
-                ))}
-              </select>
-              <span className="ml-2 font-semibold text-sm text-gray-700">Brush Size</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-4 items-center">
+      <Toolbar
+        undo={undo}
+        clearCanvas={clearCanvas}
+        color={color}
+        setColor={setColor}
+        brushSize={brushSize}
+        setBrushSize={setBrushSize}
+        drawingMode={drawingMode}
+        setDrawingMode={setDrawingMode}
+      />
+        <div className="flex gap-4 items-center justify-center ">
           {frndName !== "" && (
             <div className="flex items-center">
               <h1>You are connected with</h1>
@@ -521,7 +575,7 @@ function PaintContent(request) {
           )}
           {!invitedFrnd && (
             user ? (
-              <div className="flex items-center mt-4 sm:mt-0">
+              <div className="flex items-center mt-4 sm:mt-0 ">
                 <button
                   onClick={(e) => {
                     e.preventDefault();
@@ -578,13 +632,13 @@ function PaintContent(request) {
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
       <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
-        <div ref={touchCanvasRef} className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center w-full">
 
           {/* Left (Original) Canvas */}
-          <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+          <div  ref={touchCanvasRef}  className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
             <canvas
               ref={canvasRef}
-              width={windowWidth > 768 && isTwoCanvas ? 500 : windowWidth} // Adjust width dynamically based on screen size
+              width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth} // Adjust width dynamically based on screen size
               height="515"
               onMouseDown={startDrawing}
               onMouseMove={draw}
@@ -647,7 +701,7 @@ function PaintContent(request) {
             <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
               <canvas
                 ref={canvasRef2}
-                width={windowWidth > 768 ? 500 : windowWidth}
+                width={windowWidth > 768 ? 720 : windowWidth}
                 height="515"
               />
               {/* Friend's Cursor on Right Canvas */}
