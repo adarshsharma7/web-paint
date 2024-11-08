@@ -70,3 +70,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+/* Compact Button Styling */
+button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem; /* Slightly smaller font size for compactness */
+}
+

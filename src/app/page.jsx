@@ -138,26 +138,26 @@ function PaintContent(request) {
       setInvitedFrnd(true)
       socket.emit("joinRoom", idFromUrl);
     }
-    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory,frndDrawingMode }) => {
+    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode }) => {
 
       if (canvasRef2.current && saveHistory) {
 
         saveToHistory(true)
       }
-      drawOnCanvas(x, y, color, brushSize, isDrawing, true,frndDrawingMode);
-    });  
+      drawOnCanvas(x, y, color, brushSize, isDrawing, true, frndDrawingMode);
+    });
 
-    socket.on("drawShape",({startX, startY, x, y, drawingMode,color,brushSize })=>{
+    socket.on("drawShape", ({ startX, startY, x, y, drawingMode, color, brushSize }) => {
       let ctx;
-      if(canvasRef2.current){
-         ctx = canvasRef2.current.getContext("2d");
-      }else{
-         ctx = canvasRef.current.getContext("2d");
+      if (canvasRef2.current) {
+        ctx = canvasRef2.current.getContext("2d");
+      } else {
+        ctx = canvasRef.current.getContext("2d");
       }
-    
-      drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
+
+      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     })
-   
+
     socket.on("frndName", (data) => {
       setFrndName(data);
     })
@@ -347,12 +347,12 @@ function PaintContent(request) {
         ctx.moveTo(x, y);
       }
     } else if (drawingMode === "circle" || drawingMode === "rectangle" || drawingMode === "line" || drawingMode === "arrow") {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before drawing the shape preview
-        restoreFromHistory(ctx); // Restore previous drawings
-        ctx.beginPath(); // Start a new path for each shape to avoid extra lines
-        drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before drawing the shape preview
+      restoreFromHistory(ctx); // Restore previous drawings
+      ctx.beginPath(); // Start a new path for each shape to avoid extra lines
+      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     }
-};
+  };
 
 
   // Freehand or shape drawing function
@@ -366,7 +366,7 @@ function PaintContent(request) {
     if (drawingMode === "freehand") {
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
       drawOnCanvas(x, y, color, brushSize, true, false);
-    } 
+    }
   };
 
 
@@ -417,15 +417,15 @@ function PaintContent(request) {
     const ctx = canvasRef.current.getContext("2d");
 
     if (drawingMode === "freehand") {
-        socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
-       
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+
     } else {
-        socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode,color,brushSize });
-        drawShape(ctx, startX, startY, x, y, drawingMode,color,brushSize);
-      
+      socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
+      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+
     }
     ctx.beginPath();
-};
+  };
 
 
   // Restore canvas from history for previewing shapes without permanent drawing
@@ -435,10 +435,10 @@ function PaintContent(request) {
     const img = new Image();
     img.src = history[history.length - 1];
     img.onload = () => {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas before restoring
-        ctx.drawImage(img, 0, 0);
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas before restoring
+      ctx.drawImage(img, 0, 0);
     };
-};
+  };
 
 
 
@@ -506,24 +506,32 @@ function PaintContent(request) {
   };
 
 
-
-
-
-
   // Touch Event Handlers for Mobile
   const startDrawingTouch = (e) => {
-    e.preventDefault(); // Prevent default touch behavior (scrolling, zooming)
+    e.preventDefault(); // Prevent default touch behavior
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();
 
     if (e.touches && e.touches.length > 0) {
-      saveToHistory()
+      saveToHistory();
       const canvasRect = e.target.getBoundingClientRect();
       const x = e.touches[0].clientX - canvasRect.left;
       const y = e.touches[0].clientY - canvasRect.top;
+      setStartX(x);
+      setStartY(y);
       setIsDrawing(true);
-      drawOnCanvas(x, y, color, brushSize, false, false);
-      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+
+      if (drawingMode === "freehand") {
+        drawOnCanvas(x, y, color, brushSize, false, false);
+        socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
+      } else {
+        // Emit start of shape drawing for collaborative sessions
+        socket.emit("drawshape", { roomId, startX: x, startY: y, x, y, drawingMode, color, brushSize });
+      }
     }
   };
+
+
 
   const drawTouch = (e) => {
     if (e.touches && e.touches.length > 0) {
@@ -531,24 +539,42 @@ function PaintContent(request) {
       const x = e.touches[0].clientX - canvasRect.left;
       const y = e.touches[0].clientY - canvasRect.top;
       socket.emit("frndCursor", { roomId, x, y });
+
       if (!isDrawing) return;
-      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
-      drawOnCanvas(x, y, color, brushSize, true, false);
+
+      if (drawingMode === "freehand") {
+        socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
+        drawOnCanvas(x, y, color, brushSize, true, false);
+      } else {
+        // Clear canvas and redraw for shape preview on touch
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        restoreFromHistory(ctx);
+        drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+      }
     }
   };
+
+
 
   const stopDrawingTouch = (e) => {
-    if (e.touches && e.touches.length > 0) {
+    if (e.changedTouches && e.changedTouches.length > 0) {
       const canvasRect = e.target.getBoundingClientRect();
-      const x = e.touches[0].clientX - canvasRect.left;
-      const y = e.touches[0].clientY - canvasRect.top;
+      const x = e.changedTouches[0].clientX - canvasRect.left;
+      const y = e.changedTouches[0].clientY - canvasRect.top;
       setIsDrawing(false);
-      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+
       const ctx = canvasRef.current.getContext("2d");
-      ctx.beginPath(); // Reset path after drawing
+
+      if (drawingMode === "freehand") {
+        socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+      } else {
+        socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
+        drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+      }
+      ctx.beginPath();
     }
   };
-
 
 
 
@@ -556,55 +582,54 @@ function PaintContent(request) {
   return (
     <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-      <Toolbar
-        undo={undo}
-        clearCanvas={clearCanvas}
-        color={color}
-        setColor={setColor}
-        brushSize={brushSize}
-        setBrushSize={setBrushSize}
-        drawingMode={drawingMode}
-        setDrawingMode={setDrawingMode}
-      />
-        <div className="flex gap-4 items-center justify-center ">
-          {frndName !== "" && (
-            <div className="flex items-center">
-              <h1>You are connected with</h1>
-              <h1 className="text-blue-700 font-bold font-serif ml-1 text-lg">{frndName}</h1>
+        <Toolbar
+          undo={undo}
+          clearCanvas={clearCanvas}
+          color={color}
+          setColor={setColor}
+          brushSize={brushSize}
+          setBrushSize={setBrushSize}
+          drawingMode={drawingMode}
+          setDrawingMode={setDrawingMode}
+        />
+        {/* Right Section with Friend Info, Buttons, and Avatar */}
+        <div className="flex gap-4 items-center justify-center flex-wrap mt-4 sm:mt-0">
+          {/* Friend Connection Message */}
+          {frndName && (
+            <div className="flex items-center text-sm font-semibold">
+              <span>You are connected with </span>
+              <span className="text-blue-700 font-serif ml-1 text-lg">{frndName}</span>
             </div>
           )}
+
+          {/* Paint with Friend or Login Button */}
           {!invitedFrnd && (
             user ? (
-              <div className="flex items-center mt-4 sm:mt-0 ">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    createRoom();
-                    setShowPopup(true); // Show popup on button click
-                  }}
-                  className="p-1 px-3 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
-                >
-                  Paint with Your Friend
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  createRoom();
+                  setShowPopup(true); // Show popup on button click
+                }}
+                className="px-3 py-1 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
+              >
+                Paint with Your Friend
+              </button>
             ) : (
-              <div className="flex items-center mt-4 sm:mt-0">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.push("/sign-in")
-                  }}
-                  className="p-2 px-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300"
-                >
-                  {checkingUser ? "checking..." : "Login To Draw With Friends"}
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push("/sign-in");
+                }}
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
+              >
+                {checkingUser ? "Checking..." : "Login to Draw with Friends"}
+              </button>
             )
           )}
 
           {/* User Avatar and Logout Popup */}
           {user && (
-
             <div className="relative">
               <img
                 src={user.avatar}
@@ -613,7 +638,7 @@ function PaintContent(request) {
                 onClick={() => setShowUserPopup(!showUserPopup)}
               />
               {showUserPopup && (
-                <div ref={profileOptions} className="z-50 absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
+                <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
                   <button
                     onClick={handleLogout}
                     className="text-gray-800 p-2 hover:bg-gray-100 rounded-lg"
@@ -624,7 +649,6 @@ function PaintContent(request) {
               )}
             </div>
           )}
-
         </div>
 
       </header>
@@ -635,7 +659,7 @@ function PaintContent(request) {
         <div className="flex flex-col items-center w-full">
 
           {/* Left (Original) Canvas */}
-          <div  ref={touchCanvasRef}  className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+          <div ref={touchCanvasRef} className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
             <canvas
               ref={canvasRef}
               width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth} // Adjust width dynamically based on screen size
