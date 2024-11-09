@@ -203,6 +203,12 @@ function PaintContent(request) {
       setNotificationMessage(`${frndName} has ${data ? "split" : "merged"} the screen`);
       setShowNotification(true);
 
+      // Automatically hide notification after 3 seconds
+      { 
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 4000)}
+
       return () => {
         socket.off("isTwoCanvas");
       };
@@ -354,6 +360,11 @@ function PaintContent(request) {
       if (socketId != socket.id) {
         setNotificationMessage(`${frndName} ended the call`);
         setShowNotification(true);
+         // Automatically hide notification after 3 seconds
+      { 
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 4000)}
       }
 
     });
@@ -1017,10 +1028,7 @@ function PaintContent(request) {
           style={{ zIndex: 1000 }}
         >
           {notificationMessage}
-          { // Automatically hide notification after 3 seconds
-            setTimeout(() => {
-              setShowNotification(false);
-            }, 4000)}
+     
         </div>
 
       )}
