@@ -16,28 +16,57 @@ app.prepare().then(() => {
 
   io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
-
+   
     socket.on("joinRoom", (roomId) => {
       socket.join(roomId);
-      socket.to(roomId).emit("newUserJoined");
+      socket.to(roomId).emit("newUserJoined",{frndSocketId:socket.id});
       console.log(`Client ${socket.id} joined room ${roomId}`);
     });
 
-    socket.on("drawing", (data) => {
-      const { roomId, color, brushSize, x, y, isDrawing,saveHistory,frndDrawingMode } = data;
-   
-      if(saveHistory){
-        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, saveHistory,frndDrawingMode});
-      }else{
-        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing,frndDrawingMode });
-      }
+
+    socket.on("endCall", ({ roomId }) => {
+      io.to(roomId).emit("callEnded",{socketId:socket.id});
+    });
+
     
+    
+    socket.on("declineCall", ({ roomId, to }) => {
+      io.to(to).emit("callDeclined");
+    });
+    
+
+    // WebRTC signaling events
+    socket.on("callUser", ({ roomId, offer }) => {
+      socket.to(roomId).emit("receiveCall", { offer, from: socket.id });
+    });
+
+    socket.on("answerCall", ({  answer, to }) => {
+      io.to(to).emit("callAnswered", { answer });
+    });
+    socket.on("callDurationOn", () => {
+     io.emit("callDurationON")
+    });
+
+    socket.on("iceCandidate", ({candidate, to }) => {
+     
+      io.to(to).emit("receiveIceCandidate", { candidate });
+    });
+
+    socket.on("drawing", (data) => {
+      const { roomId, color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode } = data;
+
+      if (saveHistory) {
+        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode });
+      } else {
+        socket.to(roomId).emit("draw", { color, brushSize, x, y, isDrawing, frndDrawingMode });
+      }
+
     });
 
     socket.on("drawshape", (data) => {
-      const { roomId,startX, startY, x, y, drawingMode,color,brushSize } = data;
-   
-        socket.to(roomId).emit("drawShape", { startX, startY, x, y, drawingMode,color,brushSize });
+      const { roomId, startX, startY, x, y, drawingMode, color, brushSize } = data;
+
+      socket.to(roomId).emit("drawShape", { startX, startY, x, y, drawingMode, color, brushSize });
     });
 
     socket.on("userName", (data) => {
@@ -51,18 +80,18 @@ app.prepare().then(() => {
     });
 
     socket.on("setIsTwoCanvas", (data) => {
-    
+
       const { roomId, isTwoCanvas } = data;
       socket.to(roomId).emit("isTwoCanvas", isTwoCanvas);
     });
-   
+
     socket.on("Undo", (roomId) => {
-    
+
       socket.to(roomId).emit("undo");
     });
 
     socket.on("Clear", (roomId) => {
-     
+
       socket.to(roomId).emit("clear");
     });
 

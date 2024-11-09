@@ -32,6 +32,8 @@ function PaintContent(request) {
   const canvasRef2 = useRef(null);
   const profileOptions = useRef(null);
   const touchCanvasRef = useRef(null);
+  let peerConnection = useRef(null);
+  let callTimer = useRef(null);
 
 
   const { toast } = useToast();
@@ -67,6 +69,17 @@ function PaintContent(request) {
   const [startY, setStartY] = useState(0); // Starting Y for shap
 
   const [windowWidth, setWindowWidth] = useState(null);
+
+  const [showCallPopup, setShowCallPopup] = useState(false);
+  const [callerSocketId, setCallerSocketId] = useState(null);
+  const [receivedOffer, setReceivedOffer] = useState(null);  // Store offer
+  const [friendSocketId, setFriendSocketId] = useState(null); // for the friend’s socket ID
+
+  const [showIncomingCall, setShowIncomingCall] = useState(false);
+  const [showCallActivePopup, setShowCallActivePopup] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [callActive, setCallActive] = useState(false); // Track active call state
+
 
   //  const { data: session } = useSession();
   //  const user = session?.user;
@@ -158,6 +171,7 @@ function PaintContent(request) {
       drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     })
 
+
     socket.on("frndName", (data) => {
       setFrndName(data);
     })
@@ -171,7 +185,9 @@ function PaintContent(request) {
   useEffect(() => {
     socket.emit("userName", { roomId, name: user?.fullName })
 
-    socket.on("newUserJoined", () => {
+    socket.on("newUserJoined", ({ frndSocketId }) => {
+      setFriendSocketId(frndSocketId)
+      setShowCallPopup(true)
       socket.emit("userName", { roomId, name: user.fullName })
     })
     socket.on("frndCursorXY", (data) => {
@@ -187,11 +203,6 @@ function PaintContent(request) {
       setNotificationMessage(`${frndName} has ${data ? "split" : "merged"} the screen`);
       setShowNotification(true);
 
-
-      // Automatically hide notification after 3 seconds
-      setTimeout(() => {
-        setShowNotification(false);
-      }, 4000);
       return () => {
         socket.off("isTwoCanvas");
       };
@@ -214,7 +225,7 @@ function PaintContent(request) {
           const lastImage = newHistory[newHistory.length - 1]; // Get last image from updated history
 
           if (lastImage) {
-            console.log("hiii mister");
+
             const img = new Image();
             img.src = lastImage;
             img.onload = () => {
@@ -235,7 +246,7 @@ function PaintContent(request) {
           const lastImage = newHistory[newHistory.length - 1]; // Get last image from updated history
 
           if (lastImage) {
-            console.log("hiii mister");
+
             const img = new Image();
             img.src = lastImage;
             img.onload = () => {
@@ -298,6 +309,179 @@ function PaintContent(request) {
 
 
 
+
+  // Setup call listeners
+  useEffect(() => {
+    // Listen for incoming call
+    socket.on("receiveCall", ({ offer, from }) => {
+      setCallerSocketId(from);
+      setReceivedOffer(offer);
+      setShowIncomingCall(true);
+    });
+
+    // Handle when the call is answered
+    socket.on("callAnswered", async ({ answer }) => {
+
+      if (peerConnection.current) {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+        setShowCallActivePopup(true);
+        socket.emit("callDurationOn")
+      }
+    });
+    socket.on("callDurationON", () => {
+      console.log("durationn ONNNNNNNNN");
+
+      startCallTimer();
+    })
+
+    // Handle ICE candidates
+    socket.on("receiveIceCandidate", async ({ candidate }) => {
+      if (peerConnection.current) {
+        try {
+          await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error("Error adding ice candidate:", err);
+        }
+      }
+    });
+
+    // Handle when the call ends
+    socket.on("callEnded", ({ socketId }) => {
+      setCallActive(false)
+      setShowCallPopup(true)
+      setShowIncomingCall(false)
+      endCallCleanup();
+      if (socketId != socket.id) {
+        setNotificationMessage(`${frndName} ended the call`);
+        setShowNotification(true);
+      }
+
+    });
+
+
+    socket.on("callDeclined", () => {
+      endCallCleanup();
+      setShowIncomingCall(false);
+    });
+
+    return () => {
+      socket.off("receiveCall");
+      socket.off("callAnswered");
+      socket.off("receiveIceCandidate");
+      socket.off("callEnded");
+      socket.off("callDeclined");
+
+    };
+  }, []);
+
+
+  const startCallTimer = () => {
+
+    setCallDuration(0); // Reset duration before starting
+    callTimer.current = setInterval(() => {
+      setCallDuration((prevDuration) => prevDuration + 1);
+    }, 1000);
+  };
+
+  const endCallCleanup = () => {
+    if (callTimer.current) {
+      clearInterval(callTimer.current); // Clear the timer
+    }
+    setCallDuration(0); // Reset duration
+    setCallActive(false); // Set call status to false
+    setShowCallPopup(true)
+    if (peerConnection.current) {
+      peerConnection.current.close(); // Close the connection
+      peerConnection.current = null; // Nullify the peer connection
+    }
+  };
+
+  // initiateCall function
+  const initiateCall = async () => {
+    
+    if (!peerConnection.current) peerConnection.current = new RTCPeerConnection();
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
+
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("iceCandidate", { candidate: event.candidate, to: friendSocketId });
+      }
+    };
+
+    peerConnection.current.ontrack = (event) => {
+      const audio = document.getElementById("remoteAudio");
+      audio.srcObject = event.streams[0];
+    };
+
+    const offer = await peerConnection.current.createOffer();
+    await peerConnection.current.setLocalDescription(offer);
+
+    socket.emit("callUser", { roomId, offer });
+    setCallActive(true); // Mark call as active
+    setShowCallPopup(false)
+  };
+
+
+  // Accept or Decline Call functions
+  const acceptCall = async () => {
+    setShowIncomingCall(false);
+    setCallActive(true)
+    setShowCallPopup(false)
+    peerConnection.current = new RTCPeerConnection();
+
+    // Add media tracks (audio in this case)
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => peerConnection.current.addTrack(track, stream));
+
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("iceCandidate", { candidate: event.candidate, to: callerSocketId });
+      }
+    };
+
+    peerConnection.current.ontrack = (event) => {
+      const audio = document.getElementById("remoteAudio");
+      audio.srcObject = event.streams[0];
+    };
+
+    // Ensure the offer is set first
+    if (receivedOffer && peerConnection.current.signalingState === "stable") {
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(receivedOffer));
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
+
+      socket.emit("answerCall", { roomId, answer, to: callerSocketId });
+    }
+  };
+
+  const declineCall = () => {
+    setShowIncomingCall(false);
+
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null; // Reset peer connection for future calls
+    }
+
+    setCallActive(false);
+    setShowCallPopup(true)
+    socket.emit("declineCall", { roomId, to: callerSocketId });
+  };
+
+
+  // End the call manually
+  const endCall = () => {
+    endCallCleanup();
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    clearInterval(callTimer.current); // Stop the call timer
+    setCallDuration(0); // Reset duration
+
+    socket.emit("endCall", { roomId, to: callerSocketId }); // Notify the other user
+  };
 
 
   function saveToHistory(isFrnd) {
@@ -578,9 +762,9 @@ function PaintContent(request) {
 
 
 
-
   return (
     <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
+
       <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <Toolbar
           undo={undo}
@@ -592,6 +776,10 @@ function PaintContent(request) {
           drawingMode={drawingMode}
           setDrawingMode={setDrawingMode}
         />
+
+
+
+
         {/* Right Section with Friend Info, Buttons, and Avatar */}
         <div className="flex gap-4 items-center justify-center flex-wrap mt-4 sm:mt-0">
           {/* Friend Connection Message */}
@@ -651,11 +839,78 @@ function PaintContent(request) {
           )}
         </div>
 
+        {frndName!="" && showCallPopup && (
+          <div className="inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">Audio Call</h3>
+              <button
+                onClick={initiateCall}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
+              >
+                Start Call
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Call Popup */}
+        {callActive && (
+          <div className="top-4 right-4 p-4 bg-blue-600 text-white rounded-md shadow-lg z-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold">Call in progress...</p>
+                <p className="text-sm">Duration: {callDuration}s</p>
+              </div>
+              <button
+                onClick={endCall}
+                className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-700 transition duration-300"
+              >
+                End Call
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Incoming Call Popup */}
+        {showIncomingCall && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">Incoming Call</h3>
+              <div className="flex justify-between">
+                <button
+                  onClick={acceptCall}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={declineCall}
+                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Audio Element for Remote Call */}
+        <audio id="remoteAudio" autoPlay className="hidden" />
+
+        {/* Optional Styling for Call Duration Popup */}
+        {/* {callActive && (
+          <div className="fixed bottom-4 left-4 p-4 bg-blue-500 text-white rounded-md shadow-md z-50">
+            <span className="text-sm font-semibold">Call Duration: {callDuration}s</span>
+          </div>
+        )} */}
+
       </header>
 
       {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
       <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
+
+
         <div className="flex flex-col items-center w-full">
 
           {/* Left (Original) Canvas */}
@@ -762,7 +1017,12 @@ function PaintContent(request) {
           style={{ zIndex: 1000 }}
         >
           {notificationMessage}
+          { // Automatically hide notification after 3 seconds
+            setTimeout(() => {
+              setShowNotification(false);
+            }, 4000)}
         </div>
+
       )}
 
     </div>

@@ -6,7 +6,7 @@ import { CiStar } from "react-icons/ci";
 import { MdDraw, MdClear } from "react-icons/md";
 import { SlActionUndo } from "react-icons/sl";
 
-function Toolbar({ undo, clearCanvas, color, setColor, brushSize, setBrushSize, drawingMode, setDrawingMode }) {
+function Toolbar({ undo, clearCanvas, color, setColor, brushSize, setBrushSize, drawingMode, setDrawingMode ,initiateCall}) {
   return (
     <div className="text-center sm:text-left">
       <h1 className="text-4xl font-extrabold text-blue-700">Web Paint</h1>
@@ -129,6 +129,14 @@ function Toolbar({ undo, clearCanvas, color, setColor, brushSize, setBrushSize, 
           </button>
         </div>
       </div>
+       {/* Call Button */}
+       {/* <button
+        onClick={initiateCall}
+        className="p-2 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-green-100 transition duration-300"
+        title="Start Audio Call"
+      >
+        Start Call
+      </button> */}
     </div>
   );
 }

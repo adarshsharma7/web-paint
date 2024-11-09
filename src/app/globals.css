@@ -76,3 +76,33 @@ button {
   font-size: 0.875rem; /* Slightly smaller font size for compactness */
 }
 
+
+.incoming-call-popup, .active-call-popup {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.accept-btn, .decline-btn, .end-call-btn {
+  margin: 5px;
+  padding: 10px;
+  border: none;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.accept-btn {
+  background-color: green;
+}
+
+.decline-btn, .end-call-btn {
+  background-color: red;
+}
+
