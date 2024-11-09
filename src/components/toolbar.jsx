@@ -9,7 +9,11 @@ import { SlActionUndo } from "react-icons/sl";
 function Toolbar({ undo, clearCanvas, color, setColor, brushSize, setBrushSize, drawingMode, setDrawingMode ,initiateCall}) {
   return (
     <div className="text-center sm:text-left">
-      <h1 className="text-4xl font-extrabold text-blue-700">Web Paint</h1>
+      <div className='flex gap-1'>
+      <img src='/sync-draw-logo.png' alt="Sync Draw Logo" className="h-12 w-auto" />
+      <h1 className="text-4xl font-extrabold text-blue-700 ">Sync Draw</h1>
+      </div>
+    
       <div className="flex flex-wrap items-center space-x-2 mt-4 justify-center sm:justify-start">
         {/* Undo and Clear buttons */}
         <button

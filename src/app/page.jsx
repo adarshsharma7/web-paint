@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GoArrowSwitch } from "react-icons/go";
 import { drawShape } from "@/components/drawshape";
 import Toolbar from "@/components/toolbar";
+import SplashScreen from "@/components/SplashScreen";
 
 
 export default function Paint(request) {
@@ -79,6 +80,8 @@ function PaintContent(request) {
   const [showCallActivePopup, setShowCallActivePopup] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [callActive, setCallActive] = useState(false); // Track active call state
+
+  const [isLoading, setIsLoading] = useState(true);
 
 
   //  const { data: session } = useSession();
@@ -771,10 +774,16 @@ function PaintContent(request) {
     }
   };
 
-
+  // Callback to finish loading after splash screen disappears
+  const finishLoading = () => setIsLoading(false);
 
   return (
-    <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800">
+
+    <>
+    {isLoading ? (
+      <SplashScreen finishLoading={finishLoading} />
+    ) : (
+      <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
 
       <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <Toolbar
@@ -1034,6 +1043,10 @@ function PaintContent(request) {
       )}
 
     </div>
+    )}
+  </>
+
+   
   );
 
 
