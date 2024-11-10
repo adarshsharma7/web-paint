@@ -338,13 +338,12 @@ function PaintContent(request) {
       }
     });
     socket.on("callDurationON", () => {
-      console.log("durationn ONNNNNNNNN");
-
       startCallTimer();
     })
 
     // Handle ICE candidates
     socket.on("receiveIceCandidate", async ({ candidate }) => {
+      console.log("Received ICE candidate:", candidate);
       if (peerConnection.current) {
         try {
           await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -412,8 +411,14 @@ function PaintContent(request) {
 
   // initiateCall function
   const initiateCall = async () => {
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'turn:YOUR_TURN_SERVER', username: 'USERNAME', credential: 'PASSWORD' }
+      ]
+    };
     
-    if (!peerConnection.current) peerConnection.current = new RTCPeerConnection();
+    if (!peerConnection.current) peerConnection.current = new RTCPeerConnection(configuration);
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
@@ -443,7 +448,14 @@ function PaintContent(request) {
     setShowIncomingCall(false);
     setCallActive(true)
     setShowCallPopup(false)
-    peerConnection.current = new RTCPeerConnection();
+
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'turn:YOUR_TURN_SERVER', username: 'USERNAME', credential: 'PASSWORD' }
+      ]
+    };
+    peerConnection.current = new RTCPeerConnection(configuration);
 
     // Add media tracks (audio in this case)
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
