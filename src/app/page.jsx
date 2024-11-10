@@ -414,7 +414,6 @@ function PaintContent(request) {
     const configuration = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'turn:YOUR_TURN_SERVER', username: 'USERNAME', credential: 'PASSWORD' }
       ]
     };
     
@@ -452,7 +451,6 @@ function PaintContent(request) {
     const configuration = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'turn:YOUR_TURN_SERVER', username: 'USERNAME', credential: 'PASSWORD' }
       ]
     };
     peerConnection.current = new RTCPeerConnection(configuration);
