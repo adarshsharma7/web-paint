@@ -396,7 +396,16 @@ function PaintContent(request) {
     }, 1000);
   };
 
+  const cleanupMediaStream = () => {
+    const audio = document.getElementById("remoteAudio");
+    if (audio && audio.srcObject) {
+      audio.srcObject.getTracks().forEach(track => track.stop());
+      audio.srcObject = null;
+    }
+  };
+
   const endCallCleanup = () => {
+    cleanupMediaStream();
     if (callTimer.current) {
       clearInterval(callTimer.current); // Clear the timer
     }
@@ -411,15 +420,40 @@ function PaintContent(request) {
 
   // initiateCall function
   const initiateCall = async () => {
-    const configuration = {
+    // const configuration = {
+    //   iceServers: [
+    //     { urls: 'stun:stun.l.google.com:19302' },
+    //   ]
+    // };
+    const iceConfiguration = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-      ]
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          // Metered free TURN server
+          urls: [
+            'turn:a.relay.metered.ca:80',
+            'turn:a.relay.metered.ca:80?transport=tcp',
+            'turn:a.relay.metered.ca:443',
+            'turn:a.relay.metered.ca:443?transport=tcp'
+          ],
+          username: "55ab14519b53962340a4cb0a",
+          credential: "VbZcen6RUTYJgnoY"
+        }
+      ],
+      iceCandidatePoolSize: 10
     };
-    
-    if (!peerConnection.current) peerConnection.current = new RTCPeerConnection(configuration);
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    if (!peerConnection.current) peerConnection.current = new RTCPeerConnection(iceConfiguration);
+    const audioConstraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream));
 
     peerConnection.current.onicecandidate = (event) => {
@@ -448,15 +482,42 @@ function PaintContent(request) {
     setCallActive(true)
     setShowCallPopup(false)
 
-    const configuration = {
+    // const configuration = {
+    //   iceServers: [
+    //     { urls: 'stun:stun.l.google.com:19302' },
+  
+    //   ]
+    // };
+    const iceConfiguration = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-      ]
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          // Metered free TURN server
+          urls: [
+            'turn:a.relay.metered.ca:80',
+            'turn:a.relay.metered.ca:80?transport=tcp',
+            'turn:a.relay.metered.ca:443',
+            'turn:a.relay.metered.ca:443?transport=tcp'
+          ],
+          username: "55ab14519b53962340a4cb0a",
+          credential: "VbZcen6RUTYJgnoY"
+        }
+      ],
+      iceCandidatePoolSize: 10
     };
-    peerConnection.current = new RTCPeerConnection(configuration);
+
+    peerConnection.current = new RTCPeerConnection(iceConfiguration);
 
     // Add media tracks (audio in this case)
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioConstraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
     stream.getTracks().forEach(track => peerConnection.current.addTrack(track, stream));
 
     peerConnection.current.onicecandidate = (event) => {
