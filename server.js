@@ -24,6 +24,10 @@ app.prepare().then(() => {
     });
 
 
+    socket.on("msg", ({msgInput,roomId}) => {
+      io.to(roomId).emit("recieveMsg",{msgInput,socketId:socket.id});
+    });
+
     socket.on("endCall", ({ roomId }) => {
       io.to(roomId).emit("callEnded",{socketId:socket.id});
     });

@@ -58,7 +58,7 @@ function PaintContent(request) {
   const [checkingUser, setCheckingUser] = useState(true);
   const [isTwoCanvas, setIsTwoCanvas] = useState(false);
 
-  const [showNotification, setShowNotification] = useState(false);
+  const [showNotification, setShowNotification] = useState({ notification: false, isFrndMsg: false });
   const [notificationMessage, setNotificationMessage] = useState("");
 
   // 
@@ -82,6 +82,7 @@ function PaintContent(request) {
   const [callActive, setCallActive] = useState(false); // Track active call state
 
   const [isLoading, setIsLoading] = useState(true);
+  const [msgInput, setMsgInput] = useState("");
 
 
   //  const { data: session } = useSession();
@@ -200,17 +201,34 @@ function PaintContent(request) {
 
     socket.emit("setIsTwoCanvas", { roomId, isTwoCanvas })
 
+    socket.on("recieveMsg", ({msgInput,socketId}) => {
+  
+      if (socketId != socket.id) {
+        // Automatically hide notification after 3 seconds
+        setNotificationMessage(`${frndName} : ${msgInput}`);
+        setShowNotification({ notification: true, isFrndMsg: true });  
+
+        setTimeout(() => {
+          setShowNotification({ notification: false, isFrndMsg: false });
+        }, 4000)
+
+      }
+    
+
+    })
+
     socket.on("isTwoCanvas", (data) => {
       setIsTwoCanvas(data)
 
       setNotificationMessage(`${frndName} has ${data ? "split" : "merged"} the screen`);
-      setShowNotification(true);
+      setShowNotification({ notification: true, isFrndMsg: false });
 
       // Automatically hide notification after 3 seconds
-      { 
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 4000)}
+
+      setTimeout(() => {
+        setShowNotification({ notification: false, isFrndMsg: false });
+      }, 4000)
+
 
       return () => {
         socket.off("isTwoCanvas");
@@ -361,12 +379,13 @@ function PaintContent(request) {
       endCallCleanup();
       if (socketId != socket.id) {
         setNotificationMessage(`${frndName} ended the call`);
-        setShowNotification(true);
-         // Automatically hide notification after 3 seconds
-      { 
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 4000)}
+        setShowNotification({ notification: true, isFrndMsg: false });
+        // Automatically hide notification after 3 seconds
+        {
+          setTimeout(() => {
+            setShowNotification({ notification: false, isFrndMsg: false });
+          }, 4000)
+        }
       }
 
     });
@@ -444,7 +463,7 @@ function PaintContent(request) {
       iceCandidatePoolSize: 10
     };
 
-    
+
     if (!peerConnection.current) peerConnection.current = new RTCPeerConnection(iceConfiguration);
     const audioConstraints = {
       audio: {
@@ -485,7 +504,7 @@ function PaintContent(request) {
     // const configuration = {
     //   iceServers: [
     //     { urls: 'stun:stun.l.google.com:19302' },
-  
+
     //   ]
     // };
     const iceConfiguration = {
@@ -848,276 +867,305 @@ function PaintContent(request) {
   // Callback to finish loading after splash screen disappears
   const finishLoading = () => setIsLoading(false);
 
+  const sendMsg = () => {
+    setMsgInput("")
+    socket.emit("msg", { msgInput, roomId })
+  }
+
   return (
 
     <>
-    {isLoading ? (
-      <SplashScreen finishLoading={finishLoading} />
-    ) : (
-      <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
-
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <Toolbar
-          undo={undo}
-          clearCanvas={clearCanvas}
-          color={color}
-          setColor={setColor}
-          brushSize={brushSize}
-          setBrushSize={setBrushSize}
-          drawingMode={drawingMode}
-          setDrawingMode={setDrawingMode}
-        />
-
-
-
-
-        {/* Right Section with Friend Info, Buttons, and Avatar */}
-        <div className="flex gap-4 items-center justify-center flex-wrap mt-4 sm:mt-0">
-          {/* Friend Connection Message */}
+      {isLoading ? (
+        <SplashScreen finishLoading={finishLoading} />
+      ) : (
+        <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
           {frndName && (
-            <div className="flex items-center text-sm font-semibold">
-              <span>You are connected with </span>
-              <span className="text-blue-700 font-serif ml-1 text-lg">{frndName}</span>
+            <div className="fixed px-4 py-2 left-1/2 mt-2 top-0 transform -translate-x-1/2 w-full max-w-sm shadow-md rounded-lg flex items-center space-x-3 fade-in">
+              <input
+                type="text"
+                placeholder="Enter something..."
+                value={msgInput}
+                onChange={(e) => setMsgInput(e.target.value)}
+                className="w-full p-2 text-sm rounded-l-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200"
+              />
+              <button
+                onClick={sendMsg}
+                className="p-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+              >
+                Send
+              </button>
             </div>
           )}
 
-          {/* Paint with Friend or Login Button */}
-          {!invitedFrnd && (
-            user ? (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  createRoom();
-                  setShowPopup(true); // Show popup on button click
-                }}
-                className="px-3 py-1 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
-              >
-                Paint with Your Friend
-              </button>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  router.push("/sign-in");
-                }}
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
-              >
-                {checkingUser ? "Checking..." : "Login to Draw with Friends"}
-              </button>
-            )
-          )}
 
-          {/* User Avatar and Logout Popup */}
-          {user && (
-            <div className="relative">
-              <img
-                src={user.avatar}
-                alt="User Avatar"
-                className="w-10 h-10 rounded-full cursor-pointer"
-                onClick={() => setShowUserPopup(!showUserPopup)}
-              />
-              {showUserPopup && (
-                <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
+
+
+
+          <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
+            <Toolbar
+              undo={undo}
+              clearCanvas={clearCanvas}
+              color={color}
+              setColor={setColor}
+              brushSize={brushSize}
+              setBrushSize={setBrushSize}
+              drawingMode={drawingMode}
+              setDrawingMode={setDrawingMode}
+            />
+
+
+
+
+            {/* Right Section with Friend Info, Buttons, and Avatar */}
+            <div className="flex gap-4 items-center justify-center flex-wrap mt-4 sm:mt-0">
+              {/* Friend Connection Message */}
+              {frndName && (
+                <div className="flex items-center text-sm font-semibold">
+                  <span>You are connected with </span>
+                  <span className="text-blue-700 font-serif ml-1 text-lg">{frndName}</span>
+                </div>
+              )}
+
+              {/* Paint with Friend or Login Button */}
+              {!invitedFrnd && (
+                user ? (
                   <button
-                    onClick={handleLogout}
-                    className="text-gray-800 p-2 hover:bg-gray-100 rounded-lg"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      createRoom();
+                      setShowPopup(true); // Show popup on button click
+                    }}
+                    className="px-3 py-1 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
                   >
-                    Logout
+                    Paint with Your Friend
                   </button>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push("/sign-in");
+                    }}
+                    className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
+                  >
+                    {checkingUser ? "Checking..." : "Login to Draw with Friends"}
+                  </button>
+                )
+              )}
+
+              {/* User Avatar and Logout Popup */}
+              {user && (
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt="User Avatar"
+                    className="w-10 h-10 rounded-full cursor-pointer"
+                    onClick={() => setShowUserPopup(!showUserPopup)}
+                  />
+                  {showUserPopup && (
+                    <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
+                      <button
+                        onClick={handleLogout}
+                        className="text-gray-800 p-2 hover:bg-gray-100 rounded-lg"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {frndName!="" && showCallPopup && (
-          <div className="inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">Audio Call</h3>
-              <button
-                onClick={initiateCall}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
-              >
-                Start Call
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Active Call Popup */}
-        {callActive && (
-          <div className="top-4 right-4 p-4 bg-blue-600 text-white rounded-md shadow-lg z-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-lg font-semibold">Call in progress...</p>
-                <p className="text-sm">Duration: {callDuration}s</p>
+            {frndName != "" && showCallPopup && (
+              <div className="inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-700">Audio Call</h3>
+                  <button
+                    onClick={initiateCall}
+                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
+                  >
+                    Start Call
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={endCall}
-                className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-700 transition duration-300"
-              >
-                End Call
-              </button>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Incoming Call Popup */}
-        {showIncomingCall && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">Incoming Call</h3>
-              <div className="flex justify-between">
-                <button
-                  onClick={acceptCall}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300"
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={declineCall}
-                  className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
-                >
-                  Decline
-                </button>
+            {/* Active Call Popup */}
+            {callActive && (
+              <div className="top-4 right-4 p-4 bg-blue-600 text-white rounded-md shadow-lg z-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-lg font-semibold">Call in progress...</p>
+                    <p className="text-sm">Duration: {callDuration}s</p>
+                  </div>
+                  <button
+                    onClick={endCall}
+                    className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-700 transition duration-300"
+                  >
+                    End Call
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Audio Element for Remote Call */}
-        <audio id="remoteAudio" autoPlay className="hidden" />
+            {/* Incoming Call Popup */}
+            {showIncomingCall && (
+              <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-700">Incoming Call</h3>
+                  <div className="flex justify-between">
+                    <button
+                      onClick={acceptCall}
+                      className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={declineCall}
+                      className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {/* Optional Styling for Call Duration Popup */}
-        {/* {callActive && (
+            {/* Audio Element for Remote Call */}
+            <audio id="remoteAudio" autoPlay className="hidden" />
+
+            {/* Optional Styling for Call Duration Popup */}
+            {/* {callActive && (
           <div className="fixed bottom-4 left-4 p-4 bg-blue-500 text-white rounded-md shadow-md z-50">
             <span className="text-sm font-semibold">Call Duration: {callDuration}s</span>
           </div>
         )} */}
 
-      </header>
+          </header>
 
-      {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
+          {showPopup && <RoomLinkPopup roomId={createdId} setShowPopup={setShowPopup} />}
 
-      <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
+          <main className={` flex items-center ${isTwoCanvas ? "justify-between" : "justify-center"} ${windowWidth < 1092 && "flex-wrap"}`}>
 
 
-        <div className="flex flex-col items-center w-full">
+            <div className="flex flex-col items-center w-full">
 
-          {/* Left (Original) Canvas */}
-          <div ref={touchCanvasRef} className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
-            <canvas
-              ref={canvasRef}
-              width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth} // Adjust width dynamically based on screen size
-              height="515"
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawingTouch}
-              onTouchMove={drawTouch}
-              onTouchEnd={stopDrawingTouch}
-            />
-            {/* Friend's Cursor */}
-            {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
-              <div
-                className="absolute"
-                style={{
-                  left: `${frndCursorXY.x}px`,
-                  top: `${frndCursorXY.y}px`,
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                <HiCursorClick className="text-blue-500 text-2xl" />
+              {/* Left (Original) Canvas */}
+              <div ref={touchCanvasRef} className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+                <canvas
+                  ref={canvasRef}
+                  width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth} // Adjust width dynamically based on screen size
+                  height="515"
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawingTouch}
+                  onTouchMove={drawTouch}
+                  onTouchEnd={stopDrawingTouch}
+                />
+                {/* Friend's Cursor */}
+                {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
+                  <div
+                    className="absolute"
+                    style={{
+                      left: `${frndCursorXY.x}px`,
+                      top: `${frndCursorXY.y}px`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
+                    <HiCursorClick className="text-blue-500 text-2xl" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Color Selection Row */}
-          <div className="flex mt-6 space-x-2 flex-wrap justify-center">
-            {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
-              <button
-                key={clr}
-                onClick={() => setColor(clr)}
-                className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
-                style={{ backgroundColor: clr }}
-              />
-            ))}
-          </div>
-        </div>
+              {/* Color Selection Row */}
+              <div className="flex mt-6 space-x-2 flex-wrap justify-center">
+                {["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FFA500", "#800080", "#FFFFFF"].map((clr) => (
+                  <button
+                    key={clr}
+                    onClick={() => setColor(clr)}
+                    className="w-10 h-10 rounded-full border border-gray-300 shadow-sm"
+                    style={{ backgroundColor: clr }}
+                  />
+                ))}
+              </div>
+            </div>
 
-        {/* Toggle Button */}
-        {frndName !== "" && (
-          <div
-            className=" relative group mx-4 cursor-pointer"
-            onClick={() => setIsTwoCanvas(!isTwoCanvas)}
-          >
-            <GoArrowSwitch />
-            {/* Tooltip */}
-            <div
-              className="z-50 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2
+            {/* Toggle Button */}
+            {frndName !== "" && (
+              <div
+                className=" relative group mx-4 cursor-pointer"
+                onClick={() => setIsTwoCanvas(!isTwoCanvas)}
+              >
+                <GoArrowSwitch />
+                {/* Tooltip */}
+                <div
+                  className="z-50 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2
           opacity-0 group-hover:opacity-100 transition-opacity duration-200
           bg-gray-700 text-white text-xs px-3 py-1 rounded shadow-lg
           group-hover:block hidden"
-            >
-              {isTwoCanvas ? "Merge Canvas" : "Split Canvas"}
-            </div>
-          </div>
-        )}
-
-        {/* Right Canvas */}
-        {isTwoCanvas && (
-          <div className="flex flex-col items-center w-full">
-            <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
-              <canvas
-                ref={canvasRef2}
-                width={windowWidth > 768 ? 720 : windowWidth}
-                height="515"
-              />
-              {/* Friend's Cursor on Right Canvas */}
-              {frndCursorXY.x !== null && frndCursorXY.y !== null && (
-                <div
-                  className="absolute"
-                  style={{
-                    left: `${frndCursorXY.x}px`,
-                    top: `${frndCursorXY.y}px`,
-                    transform: "translate(-50%, -50%)",
-                  }}
                 >
-                  <HiCursorClick className="text-blue-500 text-2xl" />
+                  {isTwoCanvas ? "Merge Canvas" : "Split Canvas"}
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Right Canvas */}
+            {isTwoCanvas && (
+              <div className="flex flex-col items-center w-full">
+                <div className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
+                  <canvas
+                    ref={canvasRef2}
+                    width={windowWidth > 768 ? 720 : windowWidth}
+                    height="515"
+                  />
+                  {/* Friend's Cursor on Right Canvas */}
+                  {frndCursorXY.x !== null && frndCursorXY.y !== null && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: `${frndCursorXY.x}px`,
+                        top: `${frndCursorXY.y}px`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    >
+                      <HiCursorClick className="text-blue-500 text-2xl" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Friend's Name */}
+                <div className="flex mt-[37.5px] space-x-2 flex-wrap justify-center">
+                  <h1 className="text-center">{frndName}</h1>
+                  <h3 className="text-center font-serif text-blue-800">canvas</h3>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {showNotification.notification && (
+            <div
+              className={`fixed transition-all duration-1000 ease-out transform bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg 
+                ${showNotification.isFrndMsg != true && "bottom-2"} left-[45%] -translate-x-1/2`}
+              style={{
+                zIndex: 1000,
+                animation: showNotification.isFrndMsg
+                  ? "slideFromInput 0.5s forwards, fadeOut 0.5s 3s forwards"
+                  : "",
+              }}
+            >
+              {notificationMessage}
             </div>
-
-            {/* Friend's Name */}
-            <div className="flex mt-[37.5px] space-x-2 flex-wrap justify-center">
-              <h1 className="text-center">{frndName}</h1>
-              <h3 className="text-center font-serif text-blue-800">canvas</h3>
-            </div>
-          </div>
-        )}
-      </main>
+          )}
 
 
-      {/* Notification */}
-      {showNotification && (
-        <div
-          className={`fixed ${showNotification ? "translate-y-0" : "-translate-y-full"} 
-          transition-transform duration-500 ease-out bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg
-          ${isTwoCanvas ? "top-4" : "bottom-4"} left-1/2 transform -translate-x-1/2`}
-          style={{ zIndex: 1000 }}
-        >
-          {notificationMessage}
-     
+
+
         </div>
-
       )}
+    </>
 
-    </div>
-    )}
-  </>
 
-   
   );
 
 
