@@ -178,7 +178,7 @@ function PaintContent(request) {
 
 
     socket.on("frndName", (data) => {
-      setFrndName(data);
+      setFrndName(data || "Unknown");
     })
 
     return () => {
@@ -883,61 +883,89 @@ function PaintContent(request) {
         <SplashScreen finishLoading={finishLoading} />
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
-          {frndName && user ? (
-            <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
-              {isMinimized ? (
-                // Minimized View: Only show the bar with "Chat" and an up arrow
+
+          <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
+            {isMinimized ? (
+              // Minimized View: Chat and Call buttons side by side
+              <div className="fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 flex space-x-2">
+
+                {/* Chat Button */}
                 <div
-                  className="fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 bg-blue-600 text-white rounded-full cursor-pointer shadow-md p-1 px-3 w-auto max-w-xs transition-all duration-300 ease-out hover:bg-blue-700"
+                  className="bg-blue-600 text-white rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out hover:bg-blue-700 flex items-center"
                   onClick={() => setIsMinimized(!isMinimized)}
                 >
                   <span className="text-sm font-medium">Chat</span>
                   <span className="ml-1 transform rotate-180">▼</span>
                 </div>
 
-              ) : (
-                // Expanded View: Show the full input field and send button
+                {/* Call Button */}
                 <div
-                  className="shadow-md rounded-lg px-4 py-2 flex items-center space-x-3 transition-transform duration-300 ease-out fade-in"
-                  style={{ transition: 'transform 0.3s ease-out', transform: 'translateY(0)' }}
+                  className={`rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out flex items-center ${showCallPopup && user && frndName ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    }`}
+                  onClick={showCallPopup && user && frndName ? initiateCall : null} // Prevent click when showCallPopup is false
                 >
-                  {/* Chat header with dropdown icon */}
-                  <div className="flex justify-between w-full items-center">
-                    <input
-                      type="text"
-                      placeholder="Enter something..."
-                      value={msgInput}
-                      onChange={(e) => setMsgInput(e.target.value)}
-                      className="w-full p-2 text-sm rounded-l-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200"
-                    />
+                  <span className="text-sm font-medium">Call</span>
+                </div>
+
+              </div>
+
+            ) : (
+              // Expanded View: Show the full input field and send button
+              <div
+                className={`shadow-md rounded-lg px-4 py-2 flex items-center space-x-3 transition-transform duration-300 ease-out fade-in`}
+                style={{ transition: 'transform 0.3s ease-out', transform: 'translateY(0)' }}
+              >
+                {/* Chat header with dropdown icon */}
+                <div className="flex justify-between w-full items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Enter something..."
+                    value={msgInput}
+                    onChange={(e) => setMsgInput(e.target.value)}
+                    className={`w-full p-2 text-sm rounded-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200`}
+                  />
+
+                  {/* Button Container for spacing and alignment */}
+                  <div className="flex space-x-2">
+                    {/* Send Button */}
                     <button
                       type="submit"
-                      onClick={sendMsg}
-                      className="p-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                      onClick={frndName && user ? sendMsg  : null}
+                      className={` ${frndName && user ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'} px-4 py-2 text-white font-semibold rounded-md transition-all duration-200 shadow-sm`}
                     >
                       Send
                     </button>
-                    {/* Arrow to collapse the input field */}
+
+                    {/* Call Button */}
                     <button
-                      onClick={() => setIsMinimized(!isMinimized)}
-                      className="ml-2 p-1 text-gray-500 hover:text-blue-600 transition duration-300 ease-out"
+                      onClick={showCallPopup && user && frndName ? initiateCall : null}
+                      className={`px-4 py-2 text-white font-semibold rounded-md focus:outline-none focus:ring-2transition-all duration-200 shadow-sm ${showCallPopup && user && frndName ? " bg-green-500 hover:bg-green-600  focus:ring-green-500 " : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
                     >
-                      ▲
+                      Call
                     </button>
                   </div>
+
+                  {/* Arrow to collapse the input field */}
+                  <button
+                    onClick={() => setIsMinimized(!isMinimized)}
+                    className="ml-2 p-1 text-gray-500 hover:text-blue-600 transition duration-300 ease-out"
+                  >
+                    ▲
+                  </button>
                 </div>
-              )}
-            </div>
-          ) : frndName && !user && (
-            <div className="fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
-              <span>Login to Chat</span>
 
-            </div>
-          )}
+              </div>
+            )}
+          </div>
+          {
+             frndName && !user && (
+          <div className="absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
+            <span>Login to Chat and Call</span>
 
-
-
-
+          </div>
+          )
+          }
+         
 
           <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
             <Toolbar
@@ -950,9 +978,6 @@ function PaintContent(request) {
               drawingMode={drawingMode}
               setDrawingMode={setDrawingMode}
             />
-
-
-
 
             {/* Right Section with Friend Info, Buttons, and Avatar */}
             <div className="flex gap-4 items-center justify-center flex-wrap mt-4 sm:mt-0">
@@ -1013,19 +1038,6 @@ function PaintContent(request) {
               )}
             </div>
 
-            {frndName != "" && showCallPopup && (
-              <div className="inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-700">Audio Call</h3>
-                  <button
-                    onClick={initiateCall}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
-                  >
-                    Start Call
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Active Call Popup */}
             {callActive && (
