@@ -83,6 +83,7 @@ function PaintContent(request) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [msgInput, setMsgInput] = useState("");
+  const [isMinimized, setIsMinimized] = useState(true);
 
 
   //  const { data: session } = useSession();
@@ -93,7 +94,7 @@ function PaintContent(request) {
         const response = await axios.get("/api/users/checkUser", {
           withCredentials: true,
         });
-        console.log("User verified:", response.data);
+        // console.log("User verified:", response.data);
 
         if (response.data.success) {
           setUser(response.data.userData);
@@ -201,33 +202,36 @@ function PaintContent(request) {
 
     socket.emit("setIsTwoCanvas", { roomId, isTwoCanvas })
 
-    socket.on("recieveMsg", ({msgInput,socketId}) => {
-  
+    socket.on("recieveMsg", ({ msgInput, socketId }) => {
+
       if (socketId != socket.id) {
         // Automatically hide notification after 3 seconds
         setNotificationMessage(`${frndName} : ${msgInput}`);
-        setShowNotification({ notification: true, isFrndMsg: true });  
+        setShowNotification({ notification: true, isFrndMsg: true });
 
         setTimeout(() => {
           setShowNotification({ notification: false, isFrndMsg: false });
         }, 4000)
 
       }
-    
+
 
     })
 
-    socket.on("isTwoCanvas", (data) => {
-      setIsTwoCanvas(data)
+    socket.on("isTwoCanvas", ({ isTwoCanvas, socketId }) => {
+      if (socketId != socket.id) {
+        setIsTwoCanvas(isTwoCanvas)
 
-      setNotificationMessage(`${frndName} has ${data ? "split" : "merged"} the screen`);
-      setShowNotification({ notification: true, isFrndMsg: false });
+        setNotificationMessage(`${frndName} has ${isTwoCanvas ? "split" : "merged"} the screen`);
+        setShowNotification({ notification: true, isFrndMsg: false });
 
-      // Automatically hide notification after 3 seconds
+        // Automatically hide notification after 3 seconds
 
-      setTimeout(() => {
-        setShowNotification({ notification: false, isFrndMsg: false });
-      }, 4000)
+        setTimeout(() => {
+          setShowNotification({ notification: false, isFrndMsg: false });
+        }, 4000)
+      }
+
 
 
       return () => {
@@ -879,21 +883,55 @@ function PaintContent(request) {
         <SplashScreen finishLoading={finishLoading} />
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
-          {frndName && (
-            <div className="fixed px-4 py-2 left-1/2 mt-2 top-0 transform -translate-x-1/2 w-full max-w-sm shadow-md rounded-lg flex items-center space-x-3 fade-in">
-              <input
-                type="text"
-                placeholder="Enter something..."
-                value={msgInput}
-                onChange={(e) => setMsgInput(e.target.value)}
-                className="w-full p-2 text-sm rounded-l-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200"
-              />
-              <button
-                onClick={sendMsg}
-                className="p-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                Send
-              </button>
+          {frndName && user ? (
+            <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
+              {isMinimized ? (
+                // Minimized View: Only show the bar with "Chat" and an up arrow
+                <div
+                  className="fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 bg-blue-600 text-white rounded-full cursor-pointer shadow-md p-1 px-3 w-auto max-w-xs transition-all duration-300 ease-out hover:bg-blue-700"
+                  onClick={() => setIsMinimized(!isMinimized)}
+                >
+                  <span className="text-sm font-medium">Chat</span>
+                  <span className="ml-1 transform rotate-180">▼</span>
+                </div>
+
+              ) : (
+                // Expanded View: Show the full input field and send button
+                <div
+                  className="shadow-md rounded-lg px-4 py-2 flex items-center space-x-3 transition-transform duration-300 ease-out fade-in"
+                  style={{ transition: 'transform 0.3s ease-out', transform: 'translateY(0)' }}
+                >
+                  {/* Chat header with dropdown icon */}
+                  <div className="flex justify-between w-full items-center">
+                    <input
+                      type="text"
+                      placeholder="Enter something..."
+                      value={msgInput}
+                      onChange={(e) => setMsgInput(e.target.value)}
+                      className="w-full p-2 text-sm rounded-l-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200"
+                    />
+                    <button
+                      type="submit"
+                      onClick={sendMsg}
+                      className="p-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                    >
+                      Send
+                    </button>
+                    {/* Arrow to collapse the input field */}
+                    <button
+                      onClick={() => setIsMinimized(!isMinimized)}
+                      className="ml-2 p-1 text-gray-500 hover:text-blue-600 transition duration-300 ease-out"
+                    >
+                      ▲
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : frndName && !user && (
+            <div className="fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
+              <span>Login to Chat</span>
+
             </div>
           )}
 

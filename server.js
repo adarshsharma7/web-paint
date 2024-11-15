@@ -86,7 +86,7 @@ app.prepare().then(() => {
     socket.on("setIsTwoCanvas", (data) => {
 
       const { roomId, isTwoCanvas } = data;
-      socket.to(roomId).emit("isTwoCanvas", isTwoCanvas);
+      socket.to(roomId).emit("isTwoCanvas", {isTwoCanvas,socketId:socket.id});
     });
 
     socket.on("Undo", (roomId) => {
