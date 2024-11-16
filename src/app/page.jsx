@@ -71,7 +71,7 @@ function PaintContent(request) {
 
   const [windowWidth, setWindowWidth] = useState(null);
 
-  const [showCallPopup, setShowCallPopup] = useState(false);
+  const [showCallPopup, setShowCallPopup] = useState(true);
   const [callerSocketId, setCallerSocketId] = useState(null);
   const [receivedOffer, setReceivedOffer] = useState(null);  // Store offer
   const [friendSocketId, setFriendSocketId] = useState(null); // for the friend’s socket ID
