@@ -123,8 +123,8 @@ export default function SignInForm() {
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-500 to-blue-300">
       <div className="w-full max-w-sm p-8 space-y-6 bg-white border border-gray-200 rounded-lg shadow-lg">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">Sign in to Web Paint</h1>
-          <p className="text-gray-600 mb-6">Join the canvas and start creating!</p>
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">Sign in to Sync Draw</h1>
+          <p className="text-gray-600 mb-6">Join the Sync Draw and start creating!</p>
         </div>
 
         <Form {...form}>

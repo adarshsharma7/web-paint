@@ -113,7 +113,7 @@ export default function SignUpForm() {
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-400 to-purple-500">
       <div className="w-full max-w-md p-8 space-y-6 bg-white border border-gray-200 rounded-lg shadow-lg">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">Join Web Paint</h1>
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">Join Sync Draw</h1>
           <p className="text-gray-600 mb-4">Create your account to start drawing!</p>
         </div>
         <Form {...form}>
