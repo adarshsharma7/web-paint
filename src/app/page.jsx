@@ -338,9 +338,6 @@ function PaintContent(request) {
     }
   }, []);
 
-
-
-
   // Setup call listeners
   useEffect(() => {
     // Listen for incoming call
@@ -623,13 +620,12 @@ function PaintContent(request) {
   const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
     if (!canvas) return;
-
+  
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = color;
     ctx.lineWidth = brushSize;
     ctx.lineCap = "round";
-
-    // Ensure we start a new path each time for freehand drawing
+  
     if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
       if (isDrawing) {
         ctx.lineTo(x, y);
@@ -638,13 +634,9 @@ function PaintContent(request) {
         ctx.beginPath();
         ctx.moveTo(x, y);
       }
-    } else if (drawingMode === "circle" || drawingMode === "rectangle" || drawingMode === "line" || drawingMode === "arrow") {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before drawing the shape preview
-      restoreFromHistory(ctx); // Restore previous drawings
-      ctx.beginPath(); // Start a new path for each shape to avoid extra lines
-      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     }
   };
+  
 
 
   // Freehand or shape drawing function
@@ -652,14 +644,30 @@ function PaintContent(request) {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     socket.emit("frndCursor", { roomId, x, y });
-
+  
     if (!isDrawing) return;
-
+  
     if (drawingMode === "freehand") {
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
       drawOnCanvas(x, y, color, brushSize, true, false);
+    } else {
+      // For shapes, we'll use a temporary canvas context to show preview
+      const ctx = canvasRef.current.getContext("2d");
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      
+      // Restore previous drawings first
+      if (history.length > 0) {
+        const img = new Image();
+        img.src = history[history.length - 1];
+        ctx.drawImage(img, 0, 0);
+      }
+  
+      // Draw the shape preview
+      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+      
     }
   };
+  
 
 
   // const draw = (e) => {
@@ -705,19 +713,19 @@ function PaintContent(request) {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     setIsDrawing(false);
-
+  
     const ctx = canvasRef.current.getContext("2d");
-
+  
     if (drawingMode === "freehand") {
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
-
     } else {
+      // For shapes, save the final state
       socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
-      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
-
+      saveToHistory();
     }
     ctx.beginPath();
   };
+
 
 
   // Restore canvas from history for previewing shapes without permanent drawing
@@ -816,10 +824,7 @@ function PaintContent(request) {
       if (drawingMode === "freehand") {
         drawOnCanvas(x, y, color, brushSize, false, false);
         socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
-      } else {
-        // Emit start of shape drawing for collaborative sessions
-        socket.emit("drawshape", { roomId, startX: x, startY: y, x, y, drawingMode, color, brushSize });
-      }
+      } 
     }
   };
 
@@ -840,9 +845,16 @@ function PaintContent(request) {
       } else {
         // Clear canvas and redraw for shape preview on touch
         const ctx = canvasRef.current.getContext("2d");
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        restoreFromHistory(ctx);
-        drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      
+      // Restore previous drawings first
+      if (history.length > 0) {
+        const img = new Image();
+        img.src = history[history.length - 1];
+        ctx.drawImage(img, 0, 0);
+      }
+      // Draw the shape preview
+      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
       }
     }
   };
@@ -862,7 +874,7 @@ function PaintContent(request) {
         socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
       } else {
         socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
-        drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+        saveToHistory();
       }
       ctx.beginPath();
     }
