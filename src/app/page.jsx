@@ -17,17 +17,18 @@ import Toolbar from "@/components/toolbar";
 import SplashScreen from "@/components/SplashScreen";
 
 
-export default function Paint(request) {
+
+export default function Paint() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <PaintContent request={request} />
+      <PaintContent/>
     </Suspense>
 
   );
 
 }
 
-function PaintContent(request) {
+function PaintContent() {
   const searchParams = useSearchParams();
   const canvasRef = useRef(null);
   const canvasRef2 = useRef(null);
@@ -61,10 +62,6 @@ function PaintContent(request) {
   const [showNotification, setShowNotification] = useState({ notification: false, isFrndMsg: false });
   const [notificationMessage, setNotificationMessage] = useState("");
 
-  // 
-  const [isConnected, setIsConnected] = useState(false);
-  const [transport, setTransport] = useState("N/A");
-
   const [drawingMode, setDrawingMode] = useState("freehand");
   const [startX, setStartX] = useState(0); // Starting X for shape
   const [startY, setStartY] = useState(0); // Starting Y for shap
@@ -77,7 +74,6 @@ function PaintContent(request) {
   const [friendSocketId, setFriendSocketId] = useState(null); // for the friend’s socket ID
 
   const [showIncomingCall, setShowIncomingCall] = useState(false);
-  const [showCallActivePopup, setShowCallActivePopup] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [callActive, setCallActive] = useState(false); // Track active call state
 
@@ -86,8 +82,6 @@ function PaintContent(request) {
   const [isMinimized, setIsMinimized] = useState(true);
 
 
-  //  const { data: session } = useSession();
-  //  const user = session?.user;
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -119,35 +113,6 @@ function PaintContent(request) {
   }, []);
 
 
-
-  useEffect(() => {
-    if (socket.connected) {
-      onConnect();
-    }
-
-    function onConnect() {
-      setIsConnected(true);
-      setTransport(socket.io.engine.transport.name);
-
-      socket.io.engine.on("upgrade", (transport) => {
-        setTransport(transport.name);
-      });
-    }
-
-    function onDisconnect() {
-      setIsConnected(false);
-      setTransport("N/A");
-    }
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-    };
-  }, []);
-  // 
   useEffect(() => {
     const idFromUrl = searchParams.get("roomId");
 
@@ -352,7 +317,6 @@ function PaintContent(request) {
 
       if (peerConnection.current) {
         await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-        setShowCallActivePopup(true);
         socket.emit("callDurationOn")
       }
     });
@@ -668,22 +632,6 @@ function PaintContent(request) {
     }
   };
   
-
-
-  // const draw = (e) => {
-  //   const x = e.nativeEvent.offsetX;
-  //   const y = e.nativeEvent.offsetY;
-  //   socket.emit("frndCursor", { roomId, x, y });
-  //   if (!isDrawing) return;
-
-  //   // Emit the new point with isDrawing set to true
-  //   socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
-
-  //   // Draw on the local canvas
-  //   drawOnCanvas(x, y, color, brushSize, true, false);
-  // };
-
-
   // Starting a new drawing, initializing shape coordinates
 
 
@@ -724,20 +672,6 @@ function PaintContent(request) {
       saveToHistory();
     }
     ctx.beginPath();
-  };
-
-
-
-  // Restore canvas from history for previewing shapes without permanent drawing
-  const restoreFromHistory = (ctx) => {
-    if (history.length === 0) return;
-
-    const img = new Image();
-    img.src = history[history.length - 1];
-    img.onload = () => {
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas before restoring
-      ctx.drawImage(img, 0, 0);
-    };
   };
 
 
@@ -895,7 +829,7 @@ function PaintContent(request) {
         <SplashScreen finishLoading={finishLoading} />
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
-
+          
           <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
             {isMinimized ? (
               // Minimized View: Chat and Call buttons side by side
@@ -907,13 +841,12 @@ function PaintContent(request) {
                   onClick={() => setIsMinimized(!isMinimized)}
                 >
                   <span className="text-sm font-medium">Chat</span>
-                  <span className="ml-1 transform rotate-180">▼</span>
+                  <span className="ml-1 text-[12px]"> ▼ </span>
                 </div>
 
                 {/* Call Button */}
                 <div
-                  className={`rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out flex items-center ${showCallPopup && user && frndName ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                    }`}
+                  className={`rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out flex items-center ${showCallPopup && user && frndName ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
                   onClick={showCallPopup && user && frndName ? initiateCall : null} // Prevent click when showCallPopup is false
                 >
                   <span className="text-sm font-medium">Call</span>
@@ -971,8 +904,10 @@ function PaintContent(request) {
           </div>
           {
              frndName && !user && (
-          <div className="absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
-            <span>Login to Chat and Call</span>
+          <div className="gap-1 absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
+           
+            <p onClick={()=>router.push("/sign-in")} className="text-red-700 font-serif cursor-pointer text-sm hover:underline">Login</p>
+            <span>to Chat and Call</span>
 
           </div>
           )
@@ -1037,7 +972,7 @@ function PaintContent(request) {
                     onClick={() => setShowUserPopup(!showUserPopup)}
                   />
                   {showUserPopup && (
-                    <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md">
+                    <div ref={profileOptions} className="absolute top-12 right-0 bg-white p-2 rounded-lg shadow-md z-50">
                       <button
                         onClick={handleLogout}
                         className="text-gray-800 p-2 hover:bg-gray-100 rounded-lg"
