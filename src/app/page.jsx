@@ -21,7 +21,7 @@ import SplashScreen from "@/components/SplashScreen";
 export default function Paint() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <PaintContent/>
+      <PaintContent />
     </Suspense>
 
   );
@@ -584,12 +584,12 @@ function PaintContent() {
   const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
     if (!canvas) return;
-  
+
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = color;
     ctx.lineWidth = brushSize;
     ctx.lineCap = "round";
-  
+
     if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
       if (isDrawing) {
         ctx.lineTo(x, y);
@@ -600,7 +600,7 @@ function PaintContent() {
       }
     }
   };
-  
+
 
 
   // Freehand or shape drawing function
@@ -608,9 +608,9 @@ function PaintContent() {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     socket.emit("frndCursor", { roomId, x, y });
-  
+
     if (!isDrawing) return;
-  
+
     if (drawingMode === "freehand") {
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: true });
       drawOnCanvas(x, y, color, brushSize, true, false);
@@ -618,20 +618,20 @@ function PaintContent() {
       // For shapes, we'll use a temporary canvas context to show preview
       const ctx = canvasRef.current.getContext("2d");
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      
+
       // Restore previous drawings first
       if (history.length > 0) {
         const img = new Image();
         img.src = history[history.length - 1];
         ctx.drawImage(img, 0, 0);
       }
-  
+
       // Draw the shape preview
       drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
-      
+
     }
   };
-  
+
   // Starting a new drawing, initializing shape coordinates
 
 
@@ -661,9 +661,9 @@ function PaintContent() {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     setIsDrawing(false);
-  
+
     const ctx = canvasRef.current.getContext("2d");
-  
+
     if (drawingMode === "freehand") {
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
     } else {
@@ -758,7 +758,7 @@ function PaintContent() {
       if (drawingMode === "freehand") {
         drawOnCanvas(x, y, color, brushSize, false, false);
         socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
-      } 
+      }
     }
   };
 
@@ -779,16 +779,16 @@ function PaintContent() {
       } else {
         // Clear canvas and redraw for shape preview on touch
         const ctx = canvasRef.current.getContext("2d");
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      
-      // Restore previous drawings first
-      if (history.length > 0) {
-        const img = new Image();
-        img.src = history[history.length - 1];
-        ctx.drawImage(img, 0, 0);
-      }
-      // Draw the shape preview
-      drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+        // Restore previous drawings first
+        if (history.length > 0) {
+          const img = new Image();
+          img.src = history[history.length - 1];
+          ctx.drawImage(img, 0, 0);
+        }
+        // Draw the shape preview
+        drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
       }
     }
   };
@@ -829,7 +829,7 @@ function PaintContent() {
         <SplashScreen finishLoading={finishLoading} />
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
-          
+
           <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
             {isMinimized ? (
               // Minimized View: Chat and Call buttons side by side
@@ -862,34 +862,37 @@ function PaintContent() {
               >
                 {/* Chat header with dropdown icon */}
                 <div className="flex justify-between w-full items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Enter something..."
-                    value={msgInput}
-                    onChange={(e) => setMsgInput(e.target.value)}
-                    className={`w-full p-2 text-sm rounded-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200`}
-                  />
-
-                  {/* Button Container for spacing and alignment */}
-                  <div className="flex space-x-2">
-                    {/* Send Button */}
-                    <button
-                      type="submit"
-                      onClick={frndName && user ? sendMsg  : null}
-                      className={` ${frndName && user ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'} px-4 py-2 text-white font-semibold rounded-md transition-all duration-200 shadow-sm`}
-                    >
-                      Send
-                    </button>
-
-                    {/* Call Button */}
-                    <button
-                      onClick={showCallPopup && user && frndName ? initiateCall : null}
-                      className={`px-4 py-2 text-white font-semibold rounded-md focus:outline-none focus:ring-2transition-all duration-200 shadow-sm ${showCallPopup && user && frndName ? " bg-green-500 hover:bg-green-600  focus:ring-green-500 " : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
-                    >
-                      Call
-                    </button>
-                  </div>
-
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (frndName && user) {
+                      sendMsg();
+                    }
+                  }} className="flex w-full items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Enter something..."
+                      value={msgInput}
+                      onChange={(e) => setMsgInput(e.target.value)}
+                      className={`w-full p-2 text-sm rounded-md border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all duration-200`}
+                    />
+                    {/* Button Container for spacing and alignment */}
+                    <div className="flex space-x-2">
+                      <button
+                        type="submit"
+                        className={`${frndName && user ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'} px-4 py-2 text-white font-semibold rounded-md transition-all duration-200 shadow-sm`}
+                      >
+                        Send
+                      </button>
+                      {/* Call Button */}
+                      <button
+                        type="button"
+                        onClick={showCallPopup && user && frndName ? initiateCall : null}
+                        className={`px-4 py-2 text-white font-semibold rounded-md focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${showCallPopup && user && frndName ? "bg-green-500 hover:bg-green-600 focus:ring-green-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
+                      >
+                        Call
+                      </button>
+                    </div>
+                  </form>
                   {/* Arrow to collapse the input field */}
                   <button
                     onClick={() => setIsMinimized(!isMinimized)}
@@ -903,16 +906,16 @@ function PaintContent() {
             )}
           </div>
           {
-             frndName && !user && (
-          <div className="gap-1 absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
-           
-            <p onClick={()=>router.push("/sign-in")} className="text-red-700 font-serif cursor-pointer text-sm hover:underline">Login</p>
-            <span>to Chat and Call</span>
+            frndName && !user && (
+              <div className="gap-1 absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
 
-          </div>
-          )
+                <p onClick={() => router.push("/sign-in")} className="text-red-700 font-serif cursor-pointer text-sm hover:underline">Login</p>
+                <span>to Chat and Call</span>
+
+              </div>
+            )
           }
-         
+
 
           <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
             <Toolbar
