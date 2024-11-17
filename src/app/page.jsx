@@ -830,6 +830,7 @@ function PaintContent() {
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
 
+          {/*chat and call */}
           <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
             {isMinimized ? (
               // Minimized View: Chat and Call buttons side by side
@@ -907,7 +908,7 @@ function PaintContent() {
           </div>
           {
             frndName && !user && (
-              <div className="gap-1 absolute top-4 md:left-1/3 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
+              <div className="gap-1 absolute top-12 lg:top-4 lg:left-1/3 transform -translate-x-1/2 right-2 w-full flex justify-center  left-1/2 mt-2 items-center text-sm font-semibold">
 
                 <p onClick={() => router.push("/sign-in")} className="text-red-700 font-serif cursor-pointer text-sm hover:underline">Login</p>
                 <span>to Chat and Call</span>
