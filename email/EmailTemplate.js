@@ -60,7 +60,7 @@
 //   }
   
 
-export const verifyEmailHtml = (userName, otp) => `
+const verifyEmailHtml = (userName, otp) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,3 +91,4 @@ export const verifyEmailHtml = (userName, otp) => `
 </body>
 </html>
 `;
+export default verifyEmailHtml;
