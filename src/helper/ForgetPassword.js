@@ -11,7 +11,7 @@ export async function ForgetPasswordVerification(email, username, hashedToken) {
 
     // Send the email
     await transport.sendMail({
-      from: 'your-email@gmail.com', // Sender address
+      from: 'adarshsharma7p@gmail.com', // Sender address
       to: email, // Recipient email address
       subject: 'Reset Your Password', // Subject line
       html: forgetPasswordHtml(username, resetLink), // HTML content from template
