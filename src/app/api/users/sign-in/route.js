@@ -56,7 +56,7 @@ export async function POST(req) {
         }
 
         // Create a token
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
         // Set the token in the cookie
         const res = new Response(
@@ -68,7 +68,7 @@ export async function POST(req) {
         );
 
         // Set cookie options
-        res.headers.set('Set-Cookie', `token=${token}; HttpOnly; Secure; Path=/; Max-Age=${24 * 60 * 60}; SameSite=Strict;`);
+        res.headers.set('Set-Cookie', `token=${token}; HttpOnly; Secure; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict;`);
 
         return res;
 
