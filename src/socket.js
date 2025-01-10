@@ -2,7 +2,7 @@
 
 import { io } from "socket.io-client";
 
-export const socket = io("https://webpaintwebsocketserver-production.up.railway.app");
+export const socket = io("https://webpaint.up.railway.app");
 
 //"https://webpaintwebsocketserver-production.up.railway.app"
 
