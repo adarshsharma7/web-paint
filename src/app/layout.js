@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
        <head>
         {/* Favicon */}
-        <link rel="icon" href="/sync-draw-logo.png" type="image/png" />
+        <link rel="icon" href="/sync-draw-logo.ico" type="image/png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

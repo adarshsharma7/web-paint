@@ -21,7 +21,7 @@ export default function SplashScreen({ finishLoading }) {
       } transition-opacity duration-1000 fixed inset-0 flex flex-col items-center justify-center bg-white w-screen h-screen `}
     >
       {/* Logo */}
-      <img src="/sync-draw-logo.png" alt="Sync Draw Logo" className="h-32 w-auto mb-4 animate-fade-in-up" />
+      <img src="/sync-draw-logo.ico" alt="Sync Draw Logo" className="h-32 w-auto mb-4 animate-fade-in-up" />
 
       {/* Heading */}
       <h1 className="text-2xl font-bold text-blue-700 animate-fade-in-up delay-500">Draw Together, Talk Together</h1>

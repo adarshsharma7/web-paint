@@ -10,7 +10,7 @@ function Toolbar({ undo, clearCanvas, color, setColor, brushSize, setBrushSize, 
   return (
     <div className="text-center sm:text-left">
       <div className='flex gap-1'>
-      <img src='/sync-draw-logo.png' alt="Sync Draw Logo" className="h-12 w-auto" />
+      <img src='/sync-draw-logo.ico' alt="Sync Draw Logo" className="h-12 w-auto" />
       <h1 className="text-3xl md:text-4xl font-extrabold text-blue-700 ">Sync Draw</h1>
       </div>
     
