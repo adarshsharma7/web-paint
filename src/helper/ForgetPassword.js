@@ -7,7 +7,7 @@ export async function ForgetPasswordVerification(email, username, hashedToken) {
   try {
   
     // Generate the password reset link (assuming you use a route to handle the reset)
-    const resetLink = `https://syncdraw.netlify.appforgetpassword?token=${hashedToken}`;
+    const resetLink = `https://syncdraw.netlify.app/forgetpassword?token=${hashedToken}`;
 
     // Send the email
     await transport.sendMail({
