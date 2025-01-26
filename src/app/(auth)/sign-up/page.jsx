@@ -75,7 +75,7 @@ export default function SignUpForm() {
       formData.append('email', data.email);
       formData.append('password', data.password);
       formData.append('fullName', data.fullName);
-      formData.append('avatar', data.avatar[0]);
+     if(data.avatar) formData.append('avatar', data.avatar[0]);
 
       const response = await axios.post('/api/users/signup', formData, {
         headers: {
@@ -218,7 +218,7 @@ export default function SignUpForm() {
               )}
             />
 
-            <Button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700" disabled={isSubmitting || usernameMessage !== 'Username is available' }>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
