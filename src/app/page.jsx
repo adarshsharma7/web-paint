@@ -730,7 +730,7 @@ function PaintContent() {
       if (response.status === 200) {
         toast({
           title: 'Logged Out',
-          description: 'Cockies Cleared Successfully',
+          description: 'Cookies Cleared Successfully',
         });
         setUser("")
       }
