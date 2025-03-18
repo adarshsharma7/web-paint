@@ -6,7 +6,9 @@ import { usernameSchemaType } from "@/Schemas/signUpSchemas";
 //  export const runtime = 'edge';
 
 export async function GET(request) {
+
   await dbConnect();
+  
   try {
     const { searchParams } = new URL(request.url);
     const usernameToken = {
