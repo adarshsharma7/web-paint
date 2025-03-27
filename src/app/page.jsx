@@ -15,6 +15,7 @@ import { GoArrowSwitch } from "react-icons/go";
 import { drawShape } from "@/components/drawshape";
 import Toolbar from "@/components/toolbar";
 import SplashScreen from "@/components/SplashScreen";
+import { Alert } from "@/components/ui/alert";
 
 
 
@@ -80,6 +81,7 @@ function PaintContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [msgInput, setMsgInput] = useState("");
   const [isMinimized, setIsMinimized] = useState(true);
+  const [IsFrndDisconnected, setIsFrndDisconnected] = useState(false);
 
 
   useEffect(() => {
@@ -140,10 +142,19 @@ function PaintContent() {
 
       drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     })
+    // ❌ Room Full Error
+    socket.on("roomFull", () => {
+      alert("Room is already full! Only 2 users can join.");
+      window.location.href = "/"; // ✅ User को बाहर भेज दो (home page पर)
+    });
+
 
 
     socket.on("frndName", (data) => {
       setFrndName(data || "Unknown");
+    })
+    socket.on("frndDisconnected", () => {
+      setIsFrndDisconnected(true)
     })
 
     return () => {
@@ -157,6 +168,7 @@ function PaintContent() {
 
     socket.on("newUserJoined", ({ frndSocketId }) => {
       setFriendSocketId(frndSocketId)
+      setIsFrndDisconnected(false)
       setShowCallPopup(true)
       socket.emit("userName", { roomId, name: user.fullName })
     })
@@ -847,8 +859,8 @@ function PaintContent() {
 
                 {/* Call Button */}
                 <div
-                  className={`rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out flex items-center ${showCallPopup && user && frndName ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
-                  onClick={showCallPopup && user && frndName ? initiateCall : null} // Prevent click when showCallPopup is false
+                  className={`rounded-full cursor-pointer shadow-md p-1 px-3 transition-all duration-300 ease-out flex items-center ${showCallPopup && user && frndName && !IsFrndDisconnected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
+                  onClick={showCallPopup && user && frndName && !IsFrndDisconnected ? initiateCall : null} // Prevent click when showCallPopup is false
                 >
                   <span className="text-sm font-medium">Call</span>
                 </div>
@@ -865,7 +877,7 @@ function PaintContent() {
                 <div className="flex justify-between w-full items-center space-x-2">
                   <form onSubmit={(e) => {
                     e.preventDefault();
-                    if (frndName && user) {
+                    if (frndName && user && !IsFrndDisconnected) {
                       sendMsg();
                     }
                   }} className="flex w-full items-center space-x-2">
@@ -878,17 +890,24 @@ function PaintContent() {
                     />
                     {/* Button Container for spacing and alignment */}
                     <div className="flex space-x-2">
+                      {/* Fixed Send Button */}
                       <button
                         type="submit"
-                        className={`${frndName && user ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'} px-4 py-2 text-white font-semibold rounded-md transition-all duration-200 shadow-sm`}
+                        className={`${frndName && user && !IsFrndDisconnected
+                          ? "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+                          : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                          } px-4 py-2 text-white font-semibold rounded-md transition-all duration-200 shadow-sm`}
                       >
                         Send
                       </button>
-                      {/* Call Button */}
+                      {/* Fixed Call Button */}
                       <button
                         type="button"
-                        onClick={showCallPopup && user && frndName ? initiateCall : null}
-                        className={`px-4 py-2 text-white font-semibold rounded-md focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${showCallPopup && user && frndName ? "bg-green-500 hover:bg-green-600 focus:ring-green-500" : 'bg-gray-400 text-gray-200 cursor-not-allowed'}`}
+                        onClick={showCallPopup && user && frndName && !IsFrndDisconnected ? initiateCall : null}
+                        className={`px-4 py-2 text-white font-semibold rounded-md focus:ring-2 transition-all duration-200 shadow-sm ${showCallPopup && user && frndName && !IsFrndDisconnected
+                          ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
+                          : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                          }`}
                       >
                         Call
                       </button>
@@ -902,6 +921,7 @@ function PaintContent() {
                     ▲
                   </button>
                 </div>
+
 
               </div>
             )}
@@ -935,10 +955,17 @@ function PaintContent() {
               {/* Friend Connection Message */}
               {frndName && (
                 <div className="flex items-center text-sm font-semibold">
-                  <span>You are connected with </span>
+                  <span>
+                    {`You are `}
+                    <span className={IsFrndDisconnected ? "text-red-500" : "text-blue-500"}>
+                      {IsFrndDisconnected ? "Disconnected" : "Connected"}
+                    </span>
+                    {` with`}
+                  </span>
                   <span className="text-blue-700 font-serif ml-1 text-lg">{frndName}</span>
                 </div>
               )}
+
 
               {/* Paint with Friend or Login Button */}
               {!invitedFrnd && (

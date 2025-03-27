@@ -18,8 +18,16 @@ app.prepare().then(() => {
     console.log("New client connected:", socket.id);
    
     socket.on("joinRoom", (roomId) => {
+      const room = io.sockets.adapter.rooms.get(roomId) || new Set();
+  
+      if (room.size >= 2) {
+        // ❌ Room full hai, naye user ko reject kar do
+        socket.emit("roomFull");
+        return;
+      }
       socket.join(roomId);
       socket.to(roomId).emit("newUserJoined",{frndSocketId:socket.id});
+      socket.roomId = roomId;
       console.log(`Client ${socket.id} joined room ${roomId}`);
     });
 
@@ -99,7 +107,10 @@ app.prepare().then(() => {
       socket.to(roomId).emit("clear");
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (roomId) => {
+      if (socket.roomId) {
+        socket.to(socket.roomId).emit("frndDisconnected"); 
+      }
       console.log("Client disconnected:", socket.id);
     });
   });
