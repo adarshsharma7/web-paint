@@ -983,7 +983,7 @@ function PaintContent() {
                 ) : (
                   <button
                     onClick={(e) => {
-                      e.preventDefault();
+                     
                       router.push("/sign-in");
                     }}
                     className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-500 transition duration-300 text-sm"
