@@ -94,7 +94,7 @@ function PaintContent() {
 
         if (response.data.success) {
           setUser(response.data.userData);
-          console.log("User verified:", response.data);
+          // console.log("User verified:", response.data);
         } else {
           console.log("Verification failed.");
         }
@@ -145,7 +145,7 @@ function PaintContent() {
     // ❌ Room Full Error
     socket.on("roomFull", () => {
       alert("Room is already full! Only 2 users can join.");
-      window.location.href = "/"; // ✅ User को बाहर भेज दो (home page पर)
+      window.location.href = "/"; 
     });
 
 

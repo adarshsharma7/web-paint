@@ -30,7 +30,7 @@ const signInValidation = z.object({
 export default function SignInForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [forgetPassLoading, setForgetPassLoading] = useState(false);
-  
+
   const form = useForm({
     resolver: zodResolver(signInValidation),
     defaultValues: {
@@ -38,20 +38,20 @@ export default function SignInForm() {
       password: '',
     },
   });
-  
-  const router=useRouter();
+
+  const router = useRouter();
   const { toast } = useToast();
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-     
-      
+
+
       const response = await axios.post("/api/users/sign-in", {
         identifier: data.identifier,
         password: data.password,
       });
-  
+
       if (response.data.success === false) {
         // Handle the verification case
         if (response.data.username) {
@@ -59,9 +59,9 @@ export default function SignInForm() {
             title: 'Code Sent',
             description: 'Check your email for the verification code.',
           });
-          
+
           router.replace(`/verify/${response.data.username}`);
-          
+
         } else {
           // Handle other error messages
           toast({
@@ -72,11 +72,11 @@ export default function SignInForm() {
         setIsSubmitting(false);
         return;
       }
-  
+
       // If successful, set the token in a cookie
       if (response.data.success) {
-        Cookies.set('token', response.data.token, { expires: 1 }); // Expires in 1 day
-  
+        // Cookies.set('token', response.data.token, { expires: 1 }); // Expires in 1 day
+
         setTimeout(() => {
           setIsSubmitting(false);
           toast({
@@ -96,7 +96,7 @@ export default function SignInForm() {
       setIsSubmitting(false);
     }
   };
-  
+
   const forgetPassword = async () => {
     try {
       setForgetPassLoading(true);
