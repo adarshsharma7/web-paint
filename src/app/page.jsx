@@ -37,7 +37,7 @@ function PaintContent() {
   const touchCanvasRef = useRef(null);
   let peerConnection = useRef(null);
   let callTimer = useRef(null);
-const friendLastPoint = useRef(null);  // 👈 Add this outside
+
 
   const { toast } = useToast();
   const router = useRouter();
@@ -593,32 +593,16 @@ const friendLastPoint = useRef(null);  // 👈 Add this outside
   }
 
   // Drawing function with modes
-  // Maintain friend’s last point
+  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
+    const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
+    if (!canvas) return;
 
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = color;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = "round";
 
-const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
-  const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
-  if (!canvas) return;
-
-  const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = color;
-  ctx.lineWidth = brushSize;
-  ctx.lineCap = "round";
-
-  if ((drawingMode === "freehand" || frndDrawingMode === "freehand")) {
-    if (isFrnd) {
-      if (!friendLastPoint.current || !isDrawing) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(friendLastPoint.current.x, friendLastPoint.current.y);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-      // Update last point
-      friendLastPoint.current = { x, y };
-    } else {
+    if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
       if (isDrawing) {
         ctx.lineTo(x, y);
         ctx.stroke();
@@ -627,9 +611,7 @@ const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode
         ctx.moveTo(x, y);
       }
     }
-  }
-};
-
+  };
 
 
 
