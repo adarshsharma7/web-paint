@@ -16,51 +16,51 @@ app.prepare().then(() => {
 
   io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
-   
+
     socket.on("joinRoom", (roomId) => {
       const room = io.sockets.adapter.rooms.get(roomId) || new Set();
-  
+
       if (room.size >= 2) {
         // ❌ Room full hai, naye user ko reject kar do
         socket.emit("roomFull");
         return;
       }
       socket.join(roomId);
-      socket.to(roomId).emit("newUserJoined",{frndSocketId:socket.id});
+      socket.to(roomId).emit("newUserJoined", { frndSocketId: socket.id });
       socket.roomId = roomId;
       console.log(`Client ${socket.id} joined room ${roomId}`);
     });
 
 
-    socket.on("msg", ({msgInput,roomId}) => {
-      io.to(roomId).emit("recieveMsg",{msgInput,socketId:socket.id});
+    socket.on("msg", ({ msgInput, roomId }) => {
+      io.to(roomId).emit("recieveMsg", { msgInput, socketId: socket.id });
     });
 
     socket.on("endCall", ({ roomId }) => {
-      io.to(roomId).emit("callEnded",{socketId:socket.id});
+      io.to(roomId).emit("callEnded", { socketId: socket.id });
     });
 
-    
-    
+
+
     socket.on("declineCall", ({ roomId, to }) => {
       io.to(to).emit("callDeclined");
     });
-    
+
 
     // WebRTC signaling events
     socket.on("callUser", ({ roomId, offer }) => {
       socket.to(roomId).emit("receiveCall", { offer, from: socket.id });
     });
 
-    socket.on("answerCall", ({  answer, to }) => {
+    socket.on("answerCall", ({ answer, to }) => {
       io.to(to).emit("callAnswered", { answer });
     });
     socket.on("callDurationOn", () => {
-     io.emit("callDurationON")
+      io.emit("callDurationON")
     });
 
-    socket.on("iceCandidate", ({candidate, to }) => {
-     
+    socket.on("iceCandidate", ({ candidate, to }) => {
+
       io.to(to).emit("receiveIceCandidate", { candidate });
     });
 
@@ -74,6 +74,10 @@ app.prepare().then(() => {
       }
 
     });
+    socket.on("startPoint", ({ roomId, x, y, color, brushSize }) => {
+      socket.to(roomId).emit("startPointFromServer", { x, y, color, brushSize });
+    });
+
 
     socket.on("drawshape", (data) => {
       const { roomId, startX, startY, x, y, drawingMode, color, brushSize } = data;
@@ -94,7 +98,7 @@ app.prepare().then(() => {
     socket.on("setIsTwoCanvas", (data) => {
 
       const { roomId, isTwoCanvas } = data;
-      socket.to(roomId).emit("isTwoCanvas", {isTwoCanvas,socketId:socket.id});
+      socket.to(roomId).emit("isTwoCanvas", { isTwoCanvas, socketId: socket.id });
     });
 
     socket.on("Undo", (roomId) => {
@@ -109,7 +113,7 @@ app.prepare().then(() => {
 
     socket.on("disconnect", (roomId) => {
       if (socket.roomId) {
-        socket.to(socket.roomId).emit("frndDisconnected"); 
+        socket.to(socket.roomId).emit("frndDisconnected");
       }
       console.log("Client disconnected:", socket.id);
     });
