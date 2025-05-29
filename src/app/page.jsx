@@ -382,24 +382,6 @@ function PaintContent() {
 
     };
   }, []);
-  
-useEffect(() => {
-  socket.on("startPointFromServer", ({ x, y, color, brushSize }) => {
-    const canvas = canvasRef2.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = "round";
-    ctx.moveTo(x, y);  // ⭐ Correctly reset start point
-  });
-
-  return () => {
-    socket.off("startPointFromServer");
-  };
-}, []);
 
 
   const startCallTimer = () => {
@@ -676,16 +658,10 @@ useEffect(() => {
     setStartY(y);
     setIsDrawing(true);
 
-  if (drawingMode === "freehand") {
-  drawOnCanvas(x, y, color, brushSize, false, false);
-
-  // Tell other users to start new path here
-  socket.emit("startPoint", { roomId, x, y, color, brushSize });
-
-  // Continue with normal drawing
-  socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
-}
-
+    if (drawingMode === "freehand") {
+      drawOnCanvas(x, y, color, brushSize, false, false);
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
+    }
   };
 
 
