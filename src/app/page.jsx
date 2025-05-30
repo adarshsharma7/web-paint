@@ -84,6 +84,8 @@ function PaintContent() {
   const [IsFrndDisconnected, setIsFrndDisconnected] = useState(false);
   const [isFrndDrawing, setIsFrndDrawing] = useState(false);
   const [cursorXY, setCursorXY] = useState({ x: null, y: null });
+  const [isTryingToDraw, setIsTryingToDraw] = useState(false);
+
 
 
   useEffect(() => {
@@ -655,7 +657,7 @@ function PaintContent() {
 
 
   const startDrawing = (e) => {
-   if (isFrndDrawing) return;
+    if (isFrndDrawing) return;
     socket.emit("allow-decline-drawing", { frndDrawing: true })
     const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath()
@@ -678,7 +680,12 @@ function PaintContent() {
 
 
   const stopDrawing = (e) => {
-    if (!isDrawing || isFrndDrawing ) return;
+    setCursorXY({
+      x: null,
+      y: null
+    });
+    setIsTryingToDraw(false);
+    if (!isDrawing || isFrndDrawing) return;
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     setIsDrawing(false);
@@ -696,27 +703,39 @@ function PaintContent() {
     ctx.beginPath();
   };
 
-
-const handleMouseMove = (e) => {
-  if (isFrndDrawing) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    setCursorXY({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  }
-
-  if (!isFrndDrawing) draw(e); // Only draw if allowed
-};
-
-
   const tryStartDrawing = (e) => {
-  if (isFrndDrawing) {
-    toast("Friend is drawing... wait for your turn.");
-    return;
-  }
-  startDrawing(e);
-};
+    if (isFrndDrawing) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      setCursorXY({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setIsTryingToDraw(true); // user tried to draw while friend is drawing
+      return;
+    }
+
+    startDrawing(e);
+    setIsTryingToDraw(false); // drawing allowed
+  };
+
+
+  const handleMouseMove = (e) => {
+    if (isFrndDrawing) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      setCursorXY({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      if (!isTryingToDraw) {
+        setIsTryingToDraw(true); // start showing tooltip if not already shown
+      }
+      return;
+    }
+
+    draw(e);
+  };
+
+
 
 
 
@@ -1145,7 +1164,7 @@ const handleMouseMove = (e) => {
                 )}
 
                 {/* User Tooltip if friend is drawing */}
-                {isFrndDrawing && cursorXY.x !== null && cursorXY.y !== null && (
+                {isFrndDrawing && isTryingToDraw && cursorXY.x !== null && cursorXY.y !== null && (
                   <div
                     className="absolute px-2 py-1 bg-black text-white text-xs rounded-md pointer-events-none z-50"
                     style={{
@@ -1158,6 +1177,7 @@ const handleMouseMove = (e) => {
                     Friend is drawing... Please wait
                   </div>
                 )}
+
               </div>
 
               {/* Color Selection Row */}
