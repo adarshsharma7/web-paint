@@ -1138,7 +1138,6 @@ function PaintContent() {
                   onTouchStart={isFrndDrawing ? undefined : startDrawingTouch}
                   onTouchMove={isFrndDrawing ? undefined : drawTouch}
                   onTouchEnd={isFrndDrawing ? undefined : stopDrawingTouch}
-                  className={isFrndDrawing ? "cursor-not-allowed" : "cursor-crosshair"}
                 />
 
                 {/* Friend's Cursor */}
