@@ -82,6 +82,8 @@ function PaintContent() {
   const [msgInput, setMsgInput] = useState("");
   const [isMinimized, setIsMinimized] = useState(true);
   const [IsFrndDisconnected, setIsFrndDisconnected] = useState(false);
+  const [isFrndDrawing, setIsFrndDrawing] = useState(false);
+  const [cursorXY, setCursorXY] = useState({ x: null, y: null });
 
 
   useEffect(() => {
@@ -142,10 +144,13 @@ function PaintContent() {
 
       drawShape(ctx, startX, startY, x, y, drawingMode, color, brushSize);
     })
+    socket.on("allow-decline-drawing", ({ frndDrawing }) => {
+      setIsFrndDrawing(frndDrawing)
+    })
     // ❌ Room Full Error
     socket.on("roomFull", () => {
       alert("Room is already full! Only 2 users can join.");
-      window.location.href = "/"; 
+      window.location.href = "/";
     });
 
 
@@ -649,6 +654,7 @@ function PaintContent() {
 
   const startDrawing = (e) => {
 
+    socket.emit("allow-decline-drawing", { frndDrawing: true })
     const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath()
     saveToHistory(); // Save the current canvas state before new drawing
@@ -662,6 +668,7 @@ function PaintContent() {
       drawOnCanvas(x, y, color, brushSize, false, false);
       socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false, saveHistory: true });
     }
+
   };
 
 
@@ -683,8 +690,33 @@ function PaintContent() {
       socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
       saveToHistory();
     }
+    socket.emit("allow-decline-drawing", { frndDrawing: false })
     ctx.beginPath();
   };
+
+
+const handleMouseMove = (e) => {
+  if (isFrndDrawing) {
+    const rect = canvasRef.current.getBoundingClientRect();
+    setCursorXY({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }
+
+  if (!isFrndDrawing) draw(e); // Only draw if allowed
+};
+
+
+  const tryStartDrawing = (e) => {
+  if (isFrndDrawing) {
+    toast("Friend is drawing... wait for your turn.");
+    return;
+  }
+  startDrawing(e);
+};
+
+
 
 
 
@@ -1081,16 +1113,18 @@ function PaintContent() {
               <div ref={touchCanvasRef} className="relative w-full max-w-4xl border-2 border-gray-300 rounded-lg overflow-hidden shadow-md bg-white">
                 <canvas
                   ref={canvasRef}
-                  width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth} // Adjust width dynamically based on screen size
+                  width={windowWidth > 768 && isTwoCanvas ? 720 : windowWidth}
                   height="515"
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={startDrawingTouch}
-                  onTouchMove={drawTouch}
-                  onTouchEnd={stopDrawingTouch}
+                  onMouseDown={tryStartDrawing}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={isFrndDrawing ? undefined : stopDrawing}
+                  onMouseLeave={isFrndDrawing ? undefined : stopDrawing}
+                  onTouchStart={isFrndDrawing ? undefined : startDrawingTouch}
+                  onTouchMove={isFrndDrawing ? undefined : drawTouch}
+                  onTouchEnd={isFrndDrawing ? undefined : stopDrawingTouch}
+                  className={isFrndDrawing ? "cursor-not-allowed" : "cursor-crosshair"}
                 />
+
                 {/* Friend's Cursor */}
                 {!isTwoCanvas && frndCursorXY.x !== null && frndCursorXY.y !== null && (
                   <div
@@ -1101,7 +1135,22 @@ function PaintContent() {
                       transform: "translate(-50%, -50%)",
                     }}
                   >
-                    <HiCursorClick className="text-blue-500 text-2xl" />
+                    <HiCursorClick className={`${isFrndDrawing ? "text-red-700" : "text-blue-500"} text-2xl`} />
+                  </div>
+                )}
+
+                {/* User Tooltip if friend is drawing */}
+                {isFrndDrawing && cursorXY.x !== null && cursorXY.y !== null && (
+                  <div
+                    className="absolute px-2 py-1 bg-black text-white text-xs rounded-md pointer-events-none z-50"
+                    style={{
+                      left: `${cursorXY.x}px`,
+                      top: `${cursorXY.y}px`,
+                      transform: "translate(-50%, -120%)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Friend is drawing... Please wait
                   </div>
                 )}
               </div>
@@ -1157,7 +1206,7 @@ function PaintContent() {
                         transform: "translate(-50%, -50%)",
                       }}
                     >
-                      <HiCursorClick className="text-blue-500 text-2xl" />
+                      <HiCursorClick className={`${isFrndDrawing ? "text-red-700" : "text-blue-500"} text-2xl`} />
                     </div>
                   )}
                 </div>

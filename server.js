@@ -74,16 +74,16 @@ app.prepare().then(() => {
       }
 
     });
-    socket.on("startPoint", ({ roomId, x, y, color, brushSize }) => {
-      socket.to(roomId).emit("startPointFromServer", { x, y, color, brushSize });
-    });
-
-
+  
     socket.on("drawshape", (data) => {
       const { roomId, startX, startY, x, y, drawingMode, color, brushSize } = data;
 
       socket.to(roomId).emit("drawShape", { startX, startY, x, y, drawingMode, color, brushSize });
     });
+    socket.on("allow-decline-drawing", ({ frndDrawing }) => {
+      socket.to(socket.roomId).emit("allow-decline-drawing", { frndDrawing });
+
+    })
 
     socket.on("userName", (data) => {
       const { roomId, name } = data;
