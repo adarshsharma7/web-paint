@@ -35,8 +35,6 @@ function PaintContent() {
   const canvasRef2 = useRef(null);
   const profileOptions = useRef(null);
   const touchCanvasRef = useRef(null);
-  const userPaths = useRef({});
-
   let peerConnection = useRef(null);
   let callTimer = useRef(null);
 
@@ -125,14 +123,14 @@ function PaintContent() {
       setInvitedFrnd(true)
       socket.emit("joinRoom", idFromUrl);
     }
-    socket.on("draw", ({ userId, color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode }) => {
+    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode }) => {
+
       if (canvasRef2.current && saveHistory) {
-        saveToHistory(true);
+
+        saveToHistory(true)
       }
-
-      drawOnCanvas(x, y, color, brushSize, isDrawing, true, frndDrawingMode, userId);
+      drawOnCanvas(x, y, color, brushSize, isDrawing, true, frndDrawingMode);
     });
-
 
     socket.on("drawShape", ({ startX, startY, x, y, drawingMode, color, brushSize }) => {
       let ctx;
@@ -147,7 +145,7 @@ function PaintContent() {
     // ❌ Room Full Error
     socket.on("roomFull", () => {
       alert("Room is already full! Only 2 users can join.");
-      window.location.href = "/";
+      window.location.href = "/"; 
     });
 
 
@@ -595,45 +593,25 @@ function PaintContent() {
   }
 
   // Drawing function with modes
- const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode, userId = "default") => {
-  const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
-  if (!canvas) return;
+  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
+    const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
+    if (!canvas) return;
 
-  const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = color;
-  ctx.lineWidth = brushSize;
-  ctx.lineCap = "round";
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = color;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = "round";
 
-  const mode = isFrnd ? frndDrawingMode : drawingMode;
-
-  // Initialize tracking for this user if not done already
-  if (!userPaths.current[userId]) {
-    userPaths.current[userId] = { pathStarted: false };
-  }
-
-  if (mode === "freehand") {
-    const path = userPaths.current[userId];
-
-    if (!isDrawing) {
-      // Start a new path
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      path.pathStarted = true;
-    } else if (path.pathStarted) {
-      // Continue path
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    } else {
-      // Fallback: if somehow drawing started without path
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      path.pathStarted = true;
+    if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
+      if (isDrawing) {
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }
     }
-  }
-  
-};
-
-
+  };
 
 
 
@@ -698,19 +676,14 @@ function PaintContent() {
 
     const ctx = canvasRef.current.getContext("2d");
 
-   if (drawingMode === "freehand") {
-    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
-
-    // ✅ Reset pathStarted here
-    if (userPaths.current[socket.id]) {
-      userPaths.current[socket.id].pathStarted = false;
+    if (drawingMode === "freehand") {
+      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+    } else {
+      // For shapes, save the final state
+      socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
+      saveToHistory();
     }
-  } else {
-    socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
-    saveToHistory();
-  }
-
-  ctx.beginPath();
+    ctx.beginPath();
   };
 
 
