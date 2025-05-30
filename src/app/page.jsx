@@ -704,7 +704,7 @@ function PaintContent() {
   };
 
   const tryStartDrawing = (e) => {
-    if (isFrndDrawing) {
+    if (isFrndDrawing && !isTwoCanvas) {
       const rect = canvasRef.current.getBoundingClientRect();
       setCursorXY({
         x: e.clientX - rect.left,
@@ -720,7 +720,7 @@ function PaintContent() {
 
 
   const handleMouseMove = (e) => {
-    if (isFrndDrawing) {
+    if (isFrndDrawing && !isTwoCanvas) {
       const rect = canvasRef.current.getBoundingClientRect();
       setCursorXY({
         x: e.clientX - rect.left,
@@ -1156,7 +1156,7 @@ function PaintContent() {
                 )}
 
                 {/* User Tooltip if friend is drawing */}
-                {isFrndDrawing && isTryingToDraw && cursorXY.x !== null && cursorXY.y !== null && (
+                {!isTwoCanvas && isFrndDrawing && isTryingToDraw && cursorXY.x !== null && cursorXY.y !== null && (
                   <div
                     className="absolute px-2 py-1 bg-black text-white text-xs rounded-md pointer-events-none z-50"
                     style={{
