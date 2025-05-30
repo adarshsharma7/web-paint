@@ -595,35 +595,44 @@ function PaintContent() {
   }
 
   // Drawing function with modes
-  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode, userId = "default") => {
-    const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
-    if (!canvas) return;
+ const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode, userId = "default") => {
+  const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
+  if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    ctx.strokeStyle = color;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = "round";
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = color;
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = "round";
 
-    const mode = isFrnd ? frndDrawingMode : drawingMode;
+  const mode = isFrnd ? frndDrawingMode : drawingMode;
 
-    // Initialize tracker if user is drawing for the first time
-    if (!userPaths.current[userId]) {
-      userPaths.current[userId] = { pathStarted: false };
+  // Initialize tracking for this user if not done already
+  if (!userPaths.current[userId]) {
+    userPaths.current[userId] = { pathStarted: false };
+  }
+
+  if (mode === "freehand") {
+    const path = userPaths.current[userId];
+
+    if (!isDrawing) {
+      // Start a new path
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      path.pathStarted = true;
+    } else if (path.pathStarted) {
+      // Continue path
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      // Fallback: if somehow drawing started without path
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      path.pathStarted = true;
     }
+  }
+  
+};
 
-    if (mode === "freehand") {
-      if (!isDrawing) {
-        // Start a new path for this user
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        userPaths.current[userId].pathStarted = true;
-      } else if (userPaths.current[userId].pathStarted) {
-        // Continue this user's path
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-    }
-  };
 
 
 
@@ -689,14 +698,19 @@ function PaintContent() {
 
     const ctx = canvasRef.current.getContext("2d");
 
-    if (drawingMode === "freehand") {
-      socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
-    } else {
-      // For shapes, save the final state
-      socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
-      saveToHistory();
+   if (drawingMode === "freehand") {
+    socket.emit("drawing", { roomId, color, brushSize, x, y, isDrawing: false });
+
+    // ✅ Reset pathStarted here
+    if (userPaths.current[socket.id]) {
+      userPaths.current[socket.id].pathStarted = false;
     }
-    ctx.beginPath();
+  } else {
+    socket.emit("drawshape", { roomId, startX, startY, x, y, drawingMode, color, brushSize });
+    saveToHistory();
+  }
+
+  ctx.beginPath();
   };
 
 
