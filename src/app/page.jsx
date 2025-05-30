@@ -726,19 +726,11 @@ function PaintContent() {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });
-      if (!isTryingToDraw) {
-        setIsTryingToDraw(true); // start showing tooltip if not already shown
-      }
       return;
     }
 
     draw(e);
   };
-
-
-
-
-
 
 
   const undo = () => {
