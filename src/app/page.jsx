@@ -35,6 +35,8 @@ function PaintContent() {
   const canvasRef2 = useRef(null);
   const profileOptions = useRef(null);
   const touchCanvasRef = useRef(null);
+  const userPaths = useRef({});
+
   let peerConnection = useRef(null);
   let callTimer = useRef(null);
 
@@ -123,14 +125,14 @@ function PaintContent() {
       setInvitedFrnd(true)
       socket.emit("joinRoom", idFromUrl);
     }
-    socket.on("draw", ({ color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode }) => {
-
+    socket.on("draw", ({ userId, color, brushSize, x, y, isDrawing, saveHistory, frndDrawingMode }) => {
       if (canvasRef2.current && saveHistory) {
-
-        saveToHistory(true)
+        saveToHistory(true);
       }
-      drawOnCanvas(x, y, color, brushSize, isDrawing, true, frndDrawingMode);
+
+      drawOnCanvas(x, y, color, brushSize, isDrawing, true, frndDrawingMode, userId);
     });
+
 
     socket.on("drawShape", ({ startX, startY, x, y, drawingMode, color, brushSize }) => {
       let ctx;
@@ -145,7 +147,7 @@ function PaintContent() {
     // ❌ Room Full Error
     socket.on("roomFull", () => {
       alert("Room is already full! Only 2 users can join.");
-      window.location.href = "/"; 
+      window.location.href = "/";
     });
 
 
@@ -593,7 +595,7 @@ function PaintContent() {
   }
 
   // Drawing function with modes
-  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
+  const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode, userId = "default") => {
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
     if (!canvas) return;
 
@@ -602,16 +604,27 @@ function PaintContent() {
     ctx.lineWidth = brushSize;
     ctx.lineCap = "round";
 
-    if (drawingMode === "freehand" || frndDrawingMode === "freehand") {
-      if (isDrawing) {
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      } else {
+    const mode = isFrnd ? frndDrawingMode : drawingMode;
+
+    // Initialize tracker if user is drawing for the first time
+    if (!userPaths.current[userId]) {
+      userPaths.current[userId] = { pathStarted: false };
+    }
+
+    if (mode === "freehand") {
+      if (!isDrawing) {
+        // Start a new path for this user
         ctx.beginPath();
         ctx.moveTo(x, y);
+        userPaths.current[userId].pathStarted = true;
+      } else if (userPaths.current[userId].pathStarted) {
+        // Continue this user's path
+        ctx.lineTo(x, y);
+        ctx.stroke();
       }
     }
   };
+
 
 
 
