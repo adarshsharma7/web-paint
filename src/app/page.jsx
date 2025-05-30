@@ -599,6 +599,7 @@ function PaintContent() {
 
   // Drawing function with modes
   const drawOnCanvas = (x, y, color, brushSize, isDrawing, isFrnd, frndDrawingMode) => {
+    if (isFrndDrawing) return;
     const canvas = (canvasRef2.current && isFrnd) ? canvasRef2.current : canvasRef.current;
     if (!canvas) return;
 
@@ -622,6 +623,7 @@ function PaintContent() {
 
   // Freehand or shape drawing function
   const draw = (e) => {
+    if (isFrndDrawing) return;
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     socket.emit("frndCursor", { roomId, x, y });
@@ -653,7 +655,7 @@ function PaintContent() {
 
 
   const startDrawing = (e) => {
-
+   if (isFrndDrawing) return;
     socket.emit("allow-decline-drawing", { frndDrawing: true })
     const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath()
@@ -676,7 +678,7 @@ function PaintContent() {
 
 
   const stopDrawing = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || isFrndDrawing ) return;
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     setIsDrawing(false);
@@ -786,6 +788,7 @@ const handleMouseMove = (e) => {
 
   // Touch Event Handlers for Mobile
   const startDrawingTouch = (e) => {
+    if (isFrndDrawing) return;
     e.preventDefault(); // Prevent default touch behavior
     const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath();
@@ -809,6 +812,7 @@ const handleMouseMove = (e) => {
 
 
   const drawTouch = (e) => {
+    if (isFrndDrawing) return;
     if (e.touches && e.touches.length > 0) {
       const canvasRect = e.target.getBoundingClientRect();
       const x = e.touches[0].clientX - canvasRect.left;
@@ -840,6 +844,7 @@ const handleMouseMove = (e) => {
 
 
   const stopDrawingTouch = (e) => {
+    if (isFrndDrawing) return;
     if (e.changedTouches && e.changedTouches.length > 0) {
       const canvasRect = e.target.getBoundingClientRect();
       const x = e.changedTouches[0].clientX - canvasRect.left;
