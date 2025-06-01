@@ -31,6 +31,10 @@ app.prepare().then(() => {
       console.log(`Client ${socket.id} joined room ${roomId}`);
     });
 
+    socket.on("ping-check", ({ id }) => {
+  socket.emit("pong-check", { id }); // Echo back same id
+});
+
 
     socket.on("msg", ({ msgInput, roomId }) => {
       io.to(roomId).emit("recieveMsg", { msgInput, socketId: socket.id });
@@ -74,7 +78,7 @@ app.prepare().then(() => {
       }
 
     });
-  
+
     socket.on("drawshape", (data) => {
       const { roomId, startX, startY, x, y, drawingMode, color, brushSize } = data;
 

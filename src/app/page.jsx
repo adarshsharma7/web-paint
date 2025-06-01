@@ -15,6 +15,7 @@ import { GoArrowSwitch } from "react-icons/go";
 import { drawShape } from "@/components/drawshape";
 import Toolbar from "@/components/toolbar";
 import SplashScreen from "@/components/SplashScreen";
+import { usePingMonitor } from '@/components/PingDetection'
 import { Alert } from "@/components/ui/alert";
 
 
@@ -87,6 +88,10 @@ function PaintContent() {
   const [isTryingToDraw, setIsTryingToDraw] = useState(false);
 
 
+  const { ping, status, getSignalLevel } = usePingMonitor(frndName ? socket : null);
+
+
+
 
   useEffect(() => {
     const checkUser = async () => {
@@ -154,7 +159,6 @@ function PaintContent() {
       alert("Room is already full! Only 2 users can join.");
       window.location.href = "/";
     });
-
 
 
     socket.on("frndName", (data) => {
@@ -874,6 +878,8 @@ function PaintContent() {
     }
   };
 
+
+
   // Callback to finish loading after splash screen disappears
   const finishLoading = () => setIsLoading(false);
 
@@ -889,6 +895,35 @@ function PaintContent() {
         <SplashScreen finishLoading={finishLoading} />
       ) : (
         <div className="flex flex-col p-4 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-gray-50 text-gray-800 fade-in">
+          {frndName && (
+            <div>
+              <div className="flex items-center gap-1 justify-end">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 rounded-full transition-all duration-300 ${i <= getSignalLevel()
+                      ? status === "slow"
+                        ? "bg-yellow-400"
+                        : "bg-green-500"
+                      : "bg-gray-300"
+                      }`}
+                    style={{ height: `${i * 6}px` }}
+                  />
+                ))}
+                <span className="text-xs text-gray-500 ml-1">
+                  {ping === "check" ? "Checking..." : ping !== null ? `${ping} ms` : "No Signal"}
+                </span>
+              </div>
+              {status === "disconnected" && (
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[85%] bg-red-600 text-white text-center py-1 text-sm">
+                  Trying to reconnect...
+                </div>
+              )}
+
+            </div>
+
+          )}
+
 
           {/*chat and call */}
           <div className={`fixed top-2 md:left-1/2 md:transform md:-translate-x-1/2 sm:right-2 w-full flex justify-end md:justify-center  left-1/2 transform -translate-x-1/2 max-w-sm  mt-2 z-50`}>
